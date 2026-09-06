@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { routes } from '../data/stations'
 import { RouteMap } from '../features/route-map/RouteMap'
@@ -17,6 +17,7 @@ export function HomePage() {
   const { state, stationById, routeStationIds, storageWarning } = useAppState()
   const [mode, setMode] = useState<'all' | 'mine'>('all')
   const [zoom, setZoom] = useState(1)
+  const [mapResetKey, setMapResetKey] = useState(0)
   const selectedRoute = routes.find((route) => route.id === params.get('route')) ?? routes[0]
   const celebration = (location.state ?? {}) as CelebrationState
   const customUnplaced = useMemo(
@@ -27,6 +28,7 @@ export function HomePage() {
   const chooseRoute = (routeId: string) => {
     setParams({ route: routeId })
     setZoom(1)
+    setMapResetKey((value) => value + 1)
   }
 
   return (
@@ -44,6 +46,12 @@ export function HomePage() {
           </div>
         )}
 
+        <Link className="kana-search-link" to="/kana">
+          <span className="kana-search-sample" aria-hidden="true">あ</span>
+          <span><strong>ひらがなから さがす</strong><small>もじを おして、えきを みつけよう</small></span>
+          <i aria-hidden="true">→</i>
+        </Link>
+
         <section className="map-card" aria-labelledby="map-heading">
           <div className="map-heading-row">
             <div>
@@ -57,7 +65,7 @@ export function HomePage() {
               </div>
               <div className="zoom-controls" aria-label="ろせんずの おおきさ">
                 <button type="button" aria-label="ちいさくする" onClick={() => setZoom((value) => Math.max(.85, value - .15))}>−</button>
-                <button type="button" onClick={() => setZoom(1)}>ぜんたい</button>
+                <button type="button" onClick={() => { setZoom(.85); setMapResetKey((value) => value + 1) }}>ぜんたいを みる</button>
                 <button type="button" aria-label="おおきくする" onClick={() => setZoom((value) => Math.min(1.45, value + .15))}>＋</button>
               </div>
             </div>
@@ -70,19 +78,24 @@ export function HomePage() {
                 type="button"
                 className={route.id === selectedRoute.id ? 'route-tab route-tab--active' : 'route-tab'}
                 style={{ '--route-color': route.color } as React.CSSProperties}
+                aria-pressed={route.id === selectedRoute.id}
                 onClick={() => chooseRoute(route.id)}
               >
-                <span aria-hidden="true" />{route.name}
+                <span aria-hidden="true" />
+                <strong>{route.name}</strong>
+                <small>{route.orderedStationIds.length}えき</small>
               </button>
             ))}
           </nav>
           <div className="segment-label">しゅうろくくかん：{selectedRoute.segmentLabel}</div>
+          {selectedRoute.note && <p className="route-note">{selectedRoute.note}</p>}
           <RouteMap
             route={selectedRoute}
             stationIds={routeStationIds(selectedRoute.id)}
             mode={mode}
             zoom={zoom}
             celebrateStationId={celebration.celebrateStationId}
+            scrollResetKey={mapResetKey}
             onSelect={(stationId) => navigate(`/station/${stationId}?route=${selectedRoute.id}`)}
           />
           <div className="map-legend" aria-label="えきの しるし">

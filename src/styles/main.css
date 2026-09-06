@@ -114,6 +114,8 @@ body.is-writing {
 
 .home-main, .station-main, .practice-main, .parent-main { padding: 8px clamp(16px, 4vw, 54px) max(48px, env(safe-area-inset-bottom)); }
 
+.kana-index-main { max-width: 1180px; margin: auto; padding: 8px clamp(16px, 4vw, 54px) max(48px, env(safe-area-inset-bottom)); }
+
 .eyebrow {
   margin: 0 0 4px;
   color: #87654e;
@@ -132,6 +134,27 @@ h1, h2, p { overflow-wrap: anywhere; }
 }
 
 .map-card { overflow: hidden; }
+
+.kana-search-link {
+  width: min(620px, 100%);
+  min-height: 88px;
+  margin: 0 0 22px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 2px solid rgba(61, 139, 131, .28);
+  border-radius: 24px;
+  background: #e7f4ed;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 0 9px 24px rgba(50, 91, 81, .09);
+}
+.kana-search-sample { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 18px; background: #fff; color: #b54c3b; font-size: 2.2rem; font-weight: 900; }
+.kana-search-link > span:nth-child(2) { display: grid; gap: 3px; }
+.kana-search-link strong { font-size: 1.16rem; }
+.kana-search-link small { color: var(--muted); font-weight: 700; }
+.kana-search-link > i { margin-left: auto; font-size: 1.7rem; font-style: normal; }
 
 .map-heading-row {
   padding: clamp(20px, 3vw, 32px) clamp(22px, 3.5vw, 42px) 12px;
@@ -169,13 +192,17 @@ h1, h2, p { overflow-wrap: anywhere; }
 .zoom-controls button:first-child { border-radius: 16px 4px 4px 16px; }
 .zoom-controls button:last-child { border-radius: 4px 16px 16px 4px; }
 
-.route-tabs { display: flex; gap: 10px; padding: 8px clamp(22px, 3.5vw, 42px) 12px; overflow-x: auto; }
-.route-tab { min-height: 58px; padding: 0 20px; border: 2px solid transparent; border-radius: 19px; background: transparent; font-size: 1.05rem; font-weight: 900; cursor: pointer; white-space: nowrap; }
-.route-tab span { display: inline-block; width: 13px; height: 13px; margin-right: 9px; border-radius: 50%; background: var(--route-color); }
+.route-tabs { display: flex; gap: 10px; padding: 8px clamp(22px, 3.5vw, 42px) 14px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-color: #c9c0ae transparent; }
+.route-tab { min-height: 68px; padding: 8px 18px; border: 2px solid transparent; border-radius: 19px; background: transparent; font-size: 1.02rem; font-weight: 900; cursor: pointer; white-space: nowrap; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 9px; text-align: left; scroll-snap-align: start; }
+.route-tab span { grid-row: 1 / 3; display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--route-color); }
+.route-tab strong { font-size: .98rem; }
+.route-tab small { color: var(--muted); font-size: .7rem; }
 .route-tab--active { border-color: var(--route-color); background: #fff; }
 
 .segment-label { margin: 0 clamp(22px, 3.5vw, 42px); color: var(--muted); font-size: .8rem; font-weight: 700; }
+.route-note { margin: 8px clamp(22px, 3.5vw, 42px) 0; color: #76593f; font-size: .78rem; font-weight: 700; }
 
+.route-map-shell { position: relative; }
 .route-map-scroll { width: 100%; overflow: auto hidden; overscroll-behavior-inline: contain; scrollbar-color: #c9c0ae transparent; }
 .route-map-scale { transition: width .2s ease; }
 .route-map { display: block; width: 100%; height: 310px; overflow: visible; }
@@ -189,11 +216,13 @@ h1, h2, p { overflow-wrap: anywhere; }
 .station-dot { fill: #fffdf7; stroke-width: 7; stroke-dasharray: 7 5; }
 .station-node--added .station-dot { stroke-dasharray: none; fill: #fff7da; }
 .station-node--hidden { opacity: .14; pointer-events: none; }
-.station-label, .station-reading { text-anchor: middle; font-family: inherit; font-weight: 900; fill: var(--ink); }
+.station-label, .station-reading, .station-code { text-anchor: middle; font-family: inherit; font-weight: 900; fill: var(--ink); }
 .station-label { font-size: 20px; }
 .station-reading { font-size: 14px; fill: var(--muted); }
+.station-code { font-size: 12px; fill: #8d938f; letter-spacing: .08em; }
 .practice-badge { font-size: 27px; fill: #e2a818; paint-order: stroke; stroke: white; stroke-width: 4; }
 .train-trip { pointer-events: none; }
+.route-start-button { position: absolute; right: clamp(18px, 3vw, 34px); bottom: 12px; min-height: 44px; padding: 6px 14px; border: 2px solid #d7cfbd; border-radius: 14px; background: rgba(255, 253, 247, .94); font-size: .78rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 14px rgba(55, 51, 40, .1); }
 
 .map-legend { padding: 2px 34px 25px; display: flex; flex-wrap: wrap; gap: 22px; color: var(--muted); font-size: .78rem; font-weight: 700; }
 .map-legend span { display: inline-flex; align-items: center; gap: 7px; }
@@ -223,6 +252,13 @@ h1, h2, p { overflow-wrap: anywhere; }
 .station-sign span { width: 9%; background: var(--yellow); }
 .station-card h1 { margin: 4px 0 0; font-size: clamp(2.9rem, 8vw, 6.4rem); letter-spacing: .1em; line-height: 1.15; }
 .station-big-reading { margin: 8px 0 32px; color: #4d6467; font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 800; letter-spacing: .18em; }
+
+.route-badges { display: flex; flex-wrap: wrap; gap: 7px; }
+.route-badges--center { justify-content: center; margin: -20px 0 26px; }
+.route-badge { min-height: 31px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--route-color, #a99c83) 34%, white); border-radius: 999px; background: color-mix(in srgb, var(--route-color, #a99c83) 9%, white); font-size: .7rem; font-weight: 900; white-space: nowrap; }
+.route-badge i { width: 9px; height: 9px; border-radius: 50%; background: var(--route-color, #a99c83); }
+.route-badge small { padding: 2px 5px; border-radius: 6px; background: rgba(255, 255, 255, .78); font-size: .62rem; letter-spacing: .04em; }
+.route-badge--found { --route-color: #9a8a6d; }
 
 .kana-strip { display: flex; justify-content: center; gap: clamp(5px, 1vw, 10px); touch-action: pan-y; user-select: none; }
 .kana-chip { position: relative; min-width: clamp(50px, 7vw, 72px); height: clamp(58px, 8vw, 76px); border: 3px solid #ded4c2; border-radius: 18px; background: #fff; font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 900; cursor: pointer; transition: transform .12s, background .12s; }
@@ -348,6 +384,31 @@ h1, h2, p { overflow-wrap: anywhere; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .simple-message { min-height: 100dvh; display: grid; place-content: center; text-align: center; }
 
+.kana-index-heading { margin: 8px 0 26px; }
+.kana-index-heading h1, .kana-results-heading h1 { margin: 3px 0 8px; font-size: clamp(2rem, 5vw, 3.5rem); }
+.kana-index-heading > p:last-child, .kana-results-heading p { color: var(--muted); font-weight: 700; }
+.kana-table-card { margin-bottom: 22px; padding: clamp(18px, 3vw, 30px); border: 1px solid rgba(118, 108, 83, .16); border-radius: 28px; background: rgba(255, 253, 247, .94); box-shadow: var(--shadow); }
+.kana-table-card h2 { margin: 0 0 16px; font-size: 1.3rem; letter-spacing: .08em; }
+.kana-table { display: grid; grid-template-columns: repeat(5, minmax(52px, 1fr)); gap: clamp(6px, 1vw, 11px); }
+.kana-cell { position: relative; aspect-ratio: 1.15; min-height: 56px; border: 2px solid #d9d0bf; border-radius: 17px; background: #fff; color: var(--ink); cursor: pointer; }
+.kana-cell strong { font-size: clamp(1.65rem, 4vw, 2.5rem); }
+.kana-cell small { position: absolute; right: 7px; top: 5px; min-width: 20px; height: 20px; padding: 2px 4px; border-radius: 10px; background: #e2f3e8; color: #2f6953; font-size: .65rem; font-weight: 900; }
+.kana-cell:disabled { border-style: dashed; background: #f4f0e7; color: #bbb4a6; cursor: default; }
+.kana-cell:disabled small { background: transparent; color: #c2baac; }
+.kana-cell--blank { aspect-ratio: 1.15; }
+.kana-extra-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 22px; align-items: start; }
+.kana-results-heading { margin: 5px 0 25px; display: flex; align-items: center; gap: 22px; }
+.selected-kana { flex: 0 0 auto; width: 94px; height: 94px; display: grid; place-items: center; border-radius: 28px; background: #fff0c7; color: #b54c3b; box-shadow: var(--shadow); font-size: 4rem; font-weight: 900; }
+.kana-results-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.kana-result-card { padding: 20px; border: 1px solid rgba(118, 108, 83, .16); border-radius: 25px; background: rgba(255, 253, 247, .95); box-shadow: 0 9px 26px rgba(67, 62, 46, .1); }
+.kana-result-station { width: 100%; padding: 0 0 14px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.kana-result-name { display: block; font-size: 1.45rem; font-weight: 900; }
+.kana-result-reading { display: block; margin-top: 5px; color: #536766; font-size: 1.05rem; font-weight: 800; letter-spacing: .08em; }
+.kana-result-reading mark { padding: 2px 3px; border-radius: 7px; background: #ffd774; color: #7d3c2f; }
+.kana-result-card .route-badges { margin-bottom: 14px; }
+.kana-result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.kana-result-actions button { min-height: 46px; padding: 7px 11px; border: 0; border-radius: 14px; background: #65b9ae; color: #143c3a; font-size: .78rem; font-weight: 900; cursor: pointer; }
+
 @keyframes draw-guide { to { stroke-dashoffset: 0; } }
 @keyframes reward-in { from { opacity: 0; transform: translateY(26px) scale(.94); } }
 @keyframes celebration-in { from { opacity: 0; transform: translateY(-12px); } }
@@ -365,6 +426,7 @@ h1, h2, p { overflow-wrap: anywhere; }
   .practice-page--right .writing-pad-wrap { grid-column: 2; grid-row: 2; }
   .parent-grid { grid-template-columns: 1fr; }
   .parent-card--wide, .parent-card:last-child { grid-column: 1; }
+  .kana-results-list { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 700px) {
@@ -385,6 +447,12 @@ h1, h2, p { overflow-wrap: anywhere; }
   .parent-title { align-items: flex-start; flex-direction: column; gap: 4px; }
   .station-form { grid-template-columns: 1fr; }
   .station-form .field, .form-actions, .coverage, .form-error { grid-column: 1; }
+  .kana-extra-grid { grid-template-columns: 1fr; gap: 0; }
+  .kana-table-card { padding-inline: 14px; }
+  .kana-table { gap: 6px; }
+  .kana-cell { min-height: 50px; border-radius: 13px; }
+  .kana-results-heading { align-items: flex-start; }
+  .selected-kana { width: 74px; height: 74px; border-radius: 22px; font-size: 3rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

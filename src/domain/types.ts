@@ -15,7 +15,9 @@ export interface Route {
   color: string
   segmentLabel: string
   orderedStationIds: string[]
+  stationCodes: string[]
   sourceUrl: string
+  note?: string
 }
 
 export interface CustomStation extends Station {

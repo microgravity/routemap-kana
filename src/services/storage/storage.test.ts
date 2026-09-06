@@ -21,4 +21,16 @@ describe('バックアップ検証', () => {
     }
     expect(() => parseBackup(serializeBackup(state))).toThrow(/みつかりません/)
   })
+
+  it('初期版の駅IDと進捗をそのまま読み込める', () => {
+    const state = defaultState()
+    state.progress['tokyu-ty05'] = {
+      readingSnapshot: 'がくげいだいがく',
+      practicedPositions: [0, 3],
+      currentPosition: 3,
+      added: true,
+      addedAt: '2026-09-06T00:00:00.000Z',
+    }
+    expect(parseBackup(serializeBackup(state)).progress['tokyu-ty05']).toEqual(state.progress['tokyu-ty05'])
+  })
 })
