@@ -1,0 +1,26 @@
+{
+  "name": "じぶんの ろせんず",
+  "short_name": "ろせんず",
+  "description": "駅の名前を聞いて、ひらがなを書き、自分だけの路線図を育てるアプリ",
+  "lang": "ja",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5efe0",
+  "theme_color": "#fff8e8",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
