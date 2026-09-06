@@ -15,7 +15,7 @@
 
 * { box-sizing: border-box; }
 
-html { min-width: 320px; background: #f5efe0; }
+html { min-width: 320px; min-height: 100%; background: #f5efe0; }
 
 body {
   margin: 0;
@@ -38,7 +38,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 3px;
 }
 
-.page-shell { min-height: 100dvh; }
+.page-shell { min-height: 100vh; min-height: 100svh; min-height: 100dvh; }
+
+.practice-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overscroll-behavior-block: contain;
+}
+
+html.is-writing,
+body.is-writing {
+  overscroll-behavior: none;
+  touch-action: none;
+}
 
 .app-header {
   min-height: 92px;
@@ -98,7 +112,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .parent-entry small { grid-column: 2; color: var(--muted); font-size: .7rem; }
 
-.home-main, .station-main, .practice-main, .parent-main { padding: 8px clamp(16px, 4vw, 54px) 48px; }
+.home-main, .station-main, .practice-main, .parent-main { padding: 8px clamp(16px, 4vw, 54px) max(48px, env(safe-area-inset-bottom)); }
 
 .eyebrow {
   margin: 0 0 4px;
@@ -252,7 +266,18 @@ h1, h2, p { overflow-wrap: anywhere; }
 .stroke-markers circle { fill: #fff; stroke: #d87841; stroke-width: 8; }
 .stroke-markers text { text-anchor: middle; fill: #9d4c26; font-family: inherit; font-size: 33px; font-weight: 900; }
 .font-guide { color: #dedbd2; font-size: clamp(14rem, 40vw, 25rem); font-weight: 700; line-height: 1; }
-.ink-layer { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; touch-action: none; user-select: none; }
+.ink-layer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
 .ink-stroke { fill: none; stroke: #285965; stroke-width: 20; stroke-linecap: round; stroke-linejoin: round; }
 .pad-tools { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .soft-button, .primary-button { min-height: 56px; padding: 8px 18px; border-radius: 17px; font-weight: 900; cursor: pointer; }
