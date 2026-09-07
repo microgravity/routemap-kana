@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { hasGlyph } from '../data/kana'
+import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
 import { nextUnpracticedPosition, reconcileProgress } from '../domain/progress'
+import { evaluateTrace, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
+import { sampleGlyphGuide } from '../features/practice/sampleGlyphGuide'
 import { WritingPad } from '../features/practice/WritingPad'
 import { useSpeech } from '../services/speech/useSpeech'
 import { useAppState } from './AppState'
@@ -23,31 +26,48 @@ export function PracticePage() {
   const [mode, setMode] = useState<'trace' | 'free'>('trace')
   const [showGuide, setShowGuide] = useState(true)
   const [hasInk, setHasInk] = useState(false)
+  const [inputStrokes, setInputStrokes] = useState<Point[][]>([])
+  const [traceMessage, setTraceMessage] = useState('')
   const [resetKey, setResetKey] = useState(0)
   const [replayKey, setReplayKey] = useState(0)
-  const [reward, setReward] = useState<{ firstAdd: boolean } | null>(null)
+  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean } | null>(null)
+  const kana = characters[index] ?? ''
+  const traceAvailable = hasGlyph(kana)
+  const activeMode = mode === 'trace' && traceAvailable ? 'trace' : 'free'
+  const [traceGuide, setTraceGuide] = useState<TraceGuideStroke[] | null>(null)
 
   useEffect(() => {
     if (station) setCurrentPosition(station.id, index)
   }, [index, setCurrentPosition, station])
+
+  useEffect(() => {
+    setTraceGuide(activeMode === 'trace' ? sampleGlyphGuide(kana) : null)
+  }, [activeMode, kana])
 
   if (!station || characters.length === 0) {
     return <main className="simple-message"><h1>えきが みつかりません</h1><Link to="/">ろせんずへ</Link></main>
   }
 
   const progress = reconcileProgress(state.progress[station.id], station.reading)
-  const kana = characters[index]
 
   const goTo = (nextIndex: number) => {
     setReward(null)
     setHasInk(false)
+    setInputStrokes([])
+    setTraceMessage('')
+    setTraceGuide(null)
     setResetKey((value) => value + 1)
     navigate(`/practice/${station.id}/${nextIndex}?route=${routeId}`, { replace: true })
   }
 
   const done = () => {
     if (!hasInk) return
+    if (activeMode === 'trace' && (!traceGuide || !evaluateTrace(inputStrokes, traceGuide).passed)) {
+      setTraceMessage('もういちど なぞってみよう')
+      return
+    }
     const result = markPositionComplete(station.id, index)
+    setTraceMessage('')
     setReward(result)
   }
 
@@ -60,8 +80,8 @@ export function PracticePage() {
         <div className="practice-topbar">
           <Link className="back-link" to={`/station/${station.id}?route=${routeId}`}>← {station.reading}</Link>
           <div className="mode-switch" aria-label="かきかた">
-            <button type="button" className={mode === 'trace' ? 'selected' : ''} onClick={() => { setMode('trace'); setShowGuide(true) }}>なぞる</button>
-            <button type="button" className={mode === 'free' ? 'selected' : ''} onClick={() => setMode('free')}>じぶんで かく</button>
+            <button type="button" className={activeMode === 'trace' ? 'selected' : ''} disabled={!traceAvailable} onClick={() => { setMode('trace'); setShowGuide(true); setTraceMessage('') }}>なぞる</button>
+            <button type="button" className={activeMode === 'free' ? 'selected' : ''} onClick={() => { setMode('free'); setTraceMessage('') }}>じぶんで かく</button>
           </div>
         </div>
 
@@ -82,10 +102,11 @@ export function PracticePage() {
           <WritingPad
             kana={kana}
             showGuide={showGuide}
-            animateGuide={mode === 'trace' && !state.settings.reduceMotion}
+            animateGuide={activeMode === 'trace' && !state.settings.reduceMotion}
             replayKey={replayKey}
             resetKey={resetKey}
             onInkChange={setHasInk}
+            onStrokesChange={(strokes) => { setInputStrokes(strokes); setTraceMessage('') }}
           />
 
           <aside className="practice-tools" aria-label="れんしゅうの そうさ">
@@ -96,7 +117,9 @@ export function PracticePage() {
             <button type="button" className="tool-button" onClick={next}><span>→</span>つぎ</button>
           </aside>
         </section>
-        {!hasInk && <p className="ink-hint">せんを ひとつ かくと「できた」を おせるよ</p>}
+        {traceMessage
+          ? <p className="trace-feedback" role="status">{traceMessage}</p>
+          : !hasInk && <p className="ink-hint">せんを ひとつ かくと「できた」を おせるよ</p>}
       </main>
 
       {reward && (
@@ -106,7 +129,9 @@ export function PracticePage() {
             <p className="eyebrow">{kana} が かけたね！</p>
             <h2 id="reward-title">{reward.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</h2>
             <div className="reward-actions">
-              <button type="button" className="soft-button" onClick={next}>つぎの もじ</button>
+              <button type="button" className="soft-button" onClick={reward.allComplete ? () => goTo(0) : next}>
+                {reward.allComplete ? 'もういちど かく' : 'つぎの もじ'}
+              </button>
               <button
                 type="button"
                 className="primary-button"

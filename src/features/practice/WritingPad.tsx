@@ -8,10 +8,11 @@ interface Props {
   animateGuide: boolean
   replayKey: number
   onInkChange: (hasInk: boolean) => void
+  onStrokesChange: (strokes: Point[][]) => void
   resetKey: number
 }
 
-export function WritingPad({ kana, showGuide, animateGuide, replayKey, onInkChange, resetKey }: Props) {
+export function WritingPad({ kana, showGuide, animateGuide, replayKey, onInkChange, onStrokesChange, resetKey }: Props) {
   const [strokes, setStrokes] = useState<Point[][]>([])
   const [seenResetKey, setSeenResetKey] = useState(resetKey)
   const activePointer = useRef<number | null>(null)
@@ -66,6 +67,7 @@ export function WritingPad({ kana, showGuide, animateGuide, replayKey, onInkChan
     strokesRef.current = next
     setStrokes(next)
     onInkChange(hasMeaningfulInk(next))
+    onStrokesChange(next)
   }
 
   const pointFor = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -134,7 +136,7 @@ export function WritingPad({ kana, showGuide, animateGuide, replayKey, onInkChan
         </svg>
       </div>
       <div className="pad-tools" aria-label="かいたせんの そうさ">
-        <button type="button" className="soft-button" onClick={() => update(strokes.slice(0, -1))} disabled={strokes.length === 0}>
+        <button type="button" className="soft-button" onClick={() => update(strokesRef.current.slice(0, -1))} disabled={strokes.length === 0}>
           <span aria-hidden="true">↶</span> ひとつ もどす
         </button>
         <button type="button" className="soft-button" onClick={() => update([])} disabled={strokes.length === 0}>

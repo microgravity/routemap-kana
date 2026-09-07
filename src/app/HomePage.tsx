@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { routes } from '../data/stations'
+import { completedStationCount } from '../domain/progress'
 import { RouteMap } from '../features/route-map/RouteMap'
 import { useAppState } from './AppState'
 
@@ -19,6 +20,15 @@ export function HomePage() {
   const [zoom, setZoom] = useState(1)
   const [mapResetKey, setMapResetKey] = useState(0)
   const selectedRoute = routes.find((route) => route.id === params.get('route')) ?? routes[0]
+  const routeProgress = useMemo(() => new Map(routes.map((route) => {
+    const stationIds = routeStationIds(route.id)
+    return [route.id, {
+      stationIds,
+      completed: completedStationCount(stationIds, stationById, state.progress),
+    }]
+  })), [routeStationIds, state.progress, stationById])
+  const selectedProgress = routeProgress.get(selectedRoute.id) ?? { stationIds: [], completed: 0 }
+  const selectedSegment = selectedRoute.segmentLabel.replace(/（\d+えき）$/u, '')
   const celebration = (location.state ?? {}) as CelebrationState
   const customUnplaced = useMemo(
     () => [...stationById.values()].filter((station) => !station.builtIn && !state.customStations.find((item) => item.id === station.id)?.routeId),
@@ -83,15 +93,26 @@ export function HomePage() {
               >
                 <span aria-hidden="true" />
                 <strong>{route.name}</strong>
-                <small>{route.orderedStationIds.length}えき</small>
+                <small>{routeProgress.get(route.id)?.completed ?? 0}/{routeProgress.get(route.id)?.stationIds.length ?? 0}</small>
               </button>
             ))}
           </nav>
-          <div className="segment-label">しゅうろくくかん：{selectedRoute.segmentLabel}</div>
+          <div className="route-progress" style={{ '--route-color': selectedRoute.color } as React.CSSProperties}>
+            <div className="route-progress-copy">
+              <strong>{selectedRoute.name}</strong>
+              <span>{selectedProgress.completed} / {selectedProgress.stationIds.length} えき かけた</span>
+            </div>
+            <progress
+              value={selectedProgress.completed}
+              max={Math.max(1, selectedProgress.stationIds.length)}
+              aria-label={`${selectedRoute.name}、${selectedProgress.completed}/${selectedProgress.stationIds.length}えき かけた`}
+            />
+          </div>
+          <div className="segment-label">しゅうろくくかん：{selectedSegment}（{selectedProgress.stationIds.length}えき）</div>
           {selectedRoute.note && <p className="route-note">{selectedRoute.note}</p>}
           <RouteMap
             route={selectedRoute}
-            stationIds={routeStationIds(selectedRoute.id)}
+            stationIds={selectedProgress.stationIds}
             mode={mode}
             zoom={zoom}
             celebrateStationId={celebration.celebrateStationId}
@@ -100,8 +121,8 @@ export function HomePage() {
           />
           <div className="map-legend" aria-label="えきの しるし">
             <span><i className="legend-dot" />まだの えき</span>
-            <span><i className="legend-dot legend-dot--added" />じぶんの えき</span>
-            <span><i className="legend-star">★</i>ぜんぶの もじを れんしゅう</span>
+            <span><i className="legend-dot legend-dot--added" />いちぶ かいた</span>
+            <span><i className="legend-star">★</i>ぜんぶ かいた</span>
           </div>
         </section>
 

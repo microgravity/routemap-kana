@@ -1,4 +1,4 @@
-import type { PracticeProgress } from './types'
+import type { PracticeProgress, Station } from './types'
 import { readingVersion, splitKana } from './kana'
 
 export function freshProgress(reading: string): PracticeProgress {
@@ -33,8 +33,20 @@ export function completePosition(progress: PracticeProgress, position: number): 
 
 export function isStationPracticed(progress: PracticeProgress | undefined, reading: string): boolean {
   if (!progress) return false
+  const current = reconcileProgress(progress, reading)
   const positions = splitKana(reading)
-  return positions.length > 0 && positions.every((_, index) => progress.practicedPositions.includes(index))
+  return positions.length > 0 && positions.every((_, index) => current.practicedPositions.includes(index))
+}
+
+export function completedStationCount(
+  stationIds: string[],
+  stationById: ReadonlyMap<string, Station>,
+  progress: Record<string, PracticeProgress>,
+): number {
+  return [...new Set(stationIds)].filter((stationId) => {
+    const station = stationById.get(stationId)
+    return Boolean(station && isStationPracticed(progress[stationId], station.reading))
+  }).length
 }
 
 export function nextUnpracticedPosition(progress: PracticeProgress, reading: string, after: number): number {

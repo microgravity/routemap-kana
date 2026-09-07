@@ -70,10 +70,10 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
             return (
               <g
                 key={id}
-                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--practiced' : ''} ${hidden ? 'station-node--hidden' : ''}`}
+                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--complete' : ''} ${hidden ? 'station-node--hidden' : ''}`}
                 role={hidden ? undefined : 'button'}
                 tabIndex={hidden ? -1 : 0}
-                aria-label={`${station.displayName}、${station.reading}${practiced ? '、れんしゅうした' : added ? '、じぶんのえき' : ''}`}
+                aria-label={`${station.displayName}、${station.reading}${practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
                 onClick={() => { if (!hidden) onSelect(id) }}
                 onKeyDown={(event) => {
                   if (!hidden && (event.key === 'Enter' || event.key === ' ')) {

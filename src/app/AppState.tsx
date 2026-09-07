@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { builtInStations, routes } from '../data/stations'
 import { normalizeReading } from '../domain/kana'
-import { completePosition, freshProgress, reconcileProgress } from '../domain/progress'
+import { completePosition, freshProgress, isStationPracticed, reconcileProgress } from '../domain/progress'
 import type { AppSettings, AppState, CustomStation, PersistedState, Station, StationOverride } from '../domain/types'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
@@ -12,7 +12,7 @@ interface AppStateValue {
   storageWarning?: string
   routeStationIds: (routeId: string) => string[]
   updateSettings: (patch: Partial<AppSettings>) => void
-  markPositionComplete: (stationId: string, position: number) => { firstAdd: boolean }
+  markPositionComplete: (stationId: string, position: number) => { firstAdd: boolean; allComplete: boolean }
   setCurrentPosition: (stationId: string, position: number) => void
   saveStation: (station: CustomStation | Station, routeId?: string | null, insertAfterStationId?: string | null) => void
   deleteCustomStation: (stationId: string) => void
@@ -64,8 +64,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const markPositionComplete = useCallback((stationId: string, position: number) => {
     const station = stationById.get(stationId)
-    if (!station) return { firstAdd: false }
-    const firstAdd = !reconcileProgress(state.progress[stationId], station.reading).added
+    if (!station) return { firstAdd: false, allComplete: false }
+    const previous = reconcileProgress(state.progress[stationId], station.reading)
+    const completed = completePosition(previous, position)
+    const result = { firstAdd: !previous.added, allComplete: isStationPracticed(completed, station.reading) }
     setState((current) => {
       const existing = reconcileProgress(current.progress[stationId], station.reading)
       return {
@@ -73,7 +75,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         progress: { ...current.progress, [stationId]: completePosition(existing, position) },
       }
     })
-    return { firstAdd }
+    return result
   }, [state.progress, stationById])
 
   const setCurrentPosition = useCallback((stationId: string, position: number) => {

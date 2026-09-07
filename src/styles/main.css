@@ -199,6 +199,14 @@ h1, h2, p { overflow-wrap: anywhere; }
 .route-tab small { color: var(--muted); font-size: .7rem; }
 .route-tab--active { border-color: var(--route-color); background: #fff; }
 
+.route-progress { margin: 2px clamp(22px, 3.5vw, 42px) 10px; display: grid; grid-template-columns: minmax(210px, auto) minmax(160px, 420px); align-items: center; gap: 18px; }
+.route-progress-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 16px; }
+.route-progress-copy strong { font-size: 1.15rem; }
+.route-progress-copy span { color: var(--muted); font-size: .82rem; font-weight: 900; }
+.route-progress progress { width: 100%; height: 14px; overflow: hidden; border: 0; border-radius: 999px; background: #e8e2d5; accent-color: var(--route-color); }
+.route-progress progress::-webkit-progress-bar { border-radius: 999px; background: #e8e2d5; }
+.route-progress progress::-webkit-progress-value { border-radius: 999px; background: var(--route-color); }
+.route-progress progress::-moz-progress-bar { border-radius: 999px; background: var(--route-color); }
 .segment-label { margin: 0 clamp(22px, 3.5vw, 42px); color: var(--muted); font-size: .8rem; font-weight: 700; }
 .route-note { margin: 8px clamp(22px, 3.5vw, 42px) 0; color: #76593f; font-size: .78rem; font-weight: 700; }
 
@@ -215,6 +223,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .station-hit { fill: transparent; stroke: transparent; }
 .station-dot { fill: #fffdf7; stroke-width: 7; stroke-dasharray: 7 5; }
 .station-node--added .station-dot { stroke-dasharray: none; fill: #fff7da; }
+.station-node--complete .station-dot { fill: #fff0a8; }
 .station-node--hidden { opacity: .14; pointer-events: none; }
 .station-label, .station-reading, .station-code { text-anchor: middle; font-family: inherit; font-weight: 900; fill: var(--ink); }
 .station-label { font-size: 20px; }
@@ -275,7 +284,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .big-action--write { background: #66bcb0; color: #133c3b; }
 .big-action:active { transform: translateY(5px); box-shadow: 0 5px 0 rgba(53, 52, 40, .12); }
 
-.practice-main { max-width: 1320px; margin: auto; }
+.practice-main { max-width: 1320px; margin: auto; padding-bottom: max(18px, env(safe-area-inset-bottom)); }
 .practice-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .practice-layout { margin-top: 12px; display: grid; grid-template-columns: minmax(180px, .7fr) minmax(400px, 600px) minmax(130px, .55fr); align-items: center; gap: clamp(16px, 3vw, 38px); }
 .practice-copy { text-align: center; }
@@ -285,7 +294,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .current-kana span { width: 34px; height: 34px; padding-top: 5px; border-radius: 50%; background: var(--orange); color: white; font-size: 1rem; }
 
 .writing-pad-wrap { min-width: 0; }
-.writing-pad { position: relative; width: min(100%, 600px); aspect-ratio: 1; overflow: hidden; border: 4px solid #d6cbb8; border-radius: 30px; background: #fffefb; box-shadow: inset 0 0 0 10px rgba(247, 240, 222, .5), var(--shadow); }
+.writing-pad { position: relative; width: min(100%, 600px, calc(100vh - 250px)); width: min(100%, 600px, calc(100dvh - 250px)); aspect-ratio: 1; overflow: hidden; border: 4px solid #d6cbb8; border-radius: 30px; background: #fffefb; box-shadow: inset 0 0 0 10px rgba(247, 240, 222, .5), var(--shadow); }
 .grid-line { position: absolute; z-index: 0; opacity: .45; border-color: #d8d2c7; border-style: dashed; }
 .grid-line--horizontal { top: 50%; left: 6%; right: 6%; border-width: 1px 0 0; }
 .grid-line--vertical { left: 50%; top: 6%; bottom: 6%; border-width: 0 0 0 1px; }
@@ -316,6 +325,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 }
 .ink-stroke { fill: none; stroke: #285965; stroke-width: 20; stroke-linecap: round; stroke-linejoin: round; }
 .pad-tools { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pad-tools .soft-button { min-height: 52px; }
 .soft-button, .primary-button { min-height: 56px; padding: 8px 18px; border-radius: 17px; font-weight: 900; cursor: pointer; }
 .soft-button { border: 2px solid #d6cdbb; background: #fff; }
 .soft-button:disabled { opacity: .35; cursor: default; }
@@ -328,10 +338,12 @@ h1, h2, p { overflow-wrap: anywhere; }
 .practice-page--right .practice-tools { grid-column: 1; grid-row: 1; }
 .tool-button, .done-button { min-height: 64px; border-radius: 20px; font-size: 1rem; font-weight: 900; cursor: pointer; }
 .tool-button { border: 2px solid #d8cfbd; background: #fff; }
+.mode-switch button:disabled { opacity: .38; cursor: default; }
 .tool-button span, .done-button span { margin-right: 7px; font-size: 1.35rem; }
 .done-button { min-height: 88px; border: 0; background: #55ad82; color: white; font-size: 1.25rem; box-shadow: 0 7px 0 #388263; }
 .done-button:disabled { background: #b8beb5; box-shadow: 0 7px 0 #929a91; cursor: default; }
 .ink-hint { text-align: center; color: var(--muted); font-weight: 800; font-size: .8rem; }
+.trace-feedback { margin: 10px auto 0; width: fit-content; padding: 9px 16px; border-radius: 999px; background: #fff0c7; color: #8c4b32; text-align: center; font-weight: 900; }
 
 .reward-backdrop { position: fixed; z-index: 20; inset: 0; padding: 20px; display: grid; place-items: center; background: rgba(31, 50, 52, .46); }
 .reward-card { width: min(520px, 100%); padding: 34px; border-radius: 34px; background: #fffdf7; box-shadow: 0 22px 80px rgba(26, 42, 43, .3); text-align: center; animation: reward-in .35s cubic-bezier(.2, .9, .2, 1.15); }
@@ -427,6 +439,7 @@ h1, h2, p { overflow-wrap: anywhere; }
   .parent-grid { grid-template-columns: 1fr; }
   .parent-card--wide, .parent-card:last-child { grid-column: 1; }
   .kana-results-list { grid-template-columns: 1fr; }
+  .writing-pad { width: min(100%, 600px, calc(100vh - 300px)); width: min(100%, 600px, calc(100dvh - 300px)); }
 }
 
 @media (max-width: 700px) {
@@ -436,6 +449,7 @@ h1, h2, p { overflow-wrap: anywhere; }
   .map-heading-row { display: block; }
   .map-controls { margin-top: 18px; justify-content: flex-start; }
   .route-tabs { padding-inline: 20px; }
+  .route-progress { grid-template-columns: 1fr; gap: 7px; margin-inline: 20px; }
   .station-actions { grid-template-columns: 1fr; }
   .station-card { min-height: 0; padding-inline: 18px; }
   .kana-strip { overflow-x: auto; justify-content: flex-start; padding: 8px 2px 12px; }
