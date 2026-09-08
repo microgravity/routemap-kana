@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
-import { routes } from '../data/stations'
+import { railwayOperators, routes } from '../data/stations'
 import { hasGlyph } from '../data/kana'
 import { isHiraganaReading, normalizeReading, splitKana } from '../domain/kana'
 import type { CustomStation } from '../domain/types'
@@ -195,7 +195,14 @@ export function ParentPage() {
               <label className="field"><span>音声用の読み（任意）</span><input maxLength={80} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="空欄なら、ひらがなの読みを使用" /></label>
               {!editingStation?.builtIn && (
                 <>
-                  <label className="field"><span>置く場所</span><select value={routeId} onChange={(event) => { setRouteId(event.target.value); setInsertAfter('') }}><option value="">みつけた えき</option>{routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
+                  <label className="field"><span>置く場所</span><select value={routeId} onChange={(event) => { setRouteId(event.target.value); setInsertAfter('') }}>
+                    <option value="">みつけた えき</option>
+                    {railwayOperators.map((operator) => (
+                      <optgroup key={operator.id} label={operator.displayName}>
+                        {routes.filter((route) => route.operatorId === operator.id).map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </select></label>
                   {routeId && <label className="field"><span>この駅の後ろに入れる</span><select value={insertAfter} onChange={(event) => setInsertAfter(event.target.value)}><option value="">収録区間のいちばん前</option>{insertionChoices.map((station) => station && <option key={station.id} value={station.id}>{station.displayName}</option>)}</select></label>}
                 </>
               )}

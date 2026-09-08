@@ -27,6 +27,15 @@ describe('ひらがなから駅を探す索引', () => {
     expect(matchesForKana(index, 'じ').filter((match) => match.stationId === 'tokyu-ty07')).toHaveLength(1)
   })
 
+  it('会社をまたぐ共有駅も一件にまとめる', () => {
+    const yokohama = matchesForKana(index, 'よ').find((match) => match.stationId === 'tokyu-ty21')
+    expect(yokohama?.routeIds).toEqual(['toyoko', 'sotetsu-main'])
+    expect(matchesForKana(index, 'よ').filter((match) => match.stationId === 'tokyu-ty21')).toHaveLength(1)
+
+    const shinyokohama = matchesForKana(index, 'し').find((match) => match.stationId === 'tokyu-sh01')
+    expect(shinyokohama?.routeIds).toEqual(['shinyokohama', 'sotetsu-shinyokohama'])
+  })
+
   it('同じ文字の全出現位置を保持する', () => {
     const gakugei = matchesForKana(index, 'い').find((match) => match.stationId === 'tokyu-ty05')
     expect(gakugei?.positions).toEqual([3, 5])

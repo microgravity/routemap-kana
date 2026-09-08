@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
-import { routes } from '../data/stations'
+import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { completedStationCount } from '../domain/progress'
 import { RouteMap } from '../features/route-map/RouteMap'
 import { useAppState } from './AppState'
@@ -21,6 +21,11 @@ export function HomePage() {
   const [zoom, setZoom] = useState(1)
   const [mapResetKey, setMapResetKey] = useState(0)
   const selectedRoute = routes.find((route) => route.id === params.get('route')) ?? routes[0]
+  const [lastRouteByOperator, setLastRouteByOperator] = useState<Record<string, string>>({
+    [selectedRoute.operatorId]: selectedRoute.id,
+  })
+  const selectedOperator = railwayOperatorById.get(selectedRoute.operatorId) ?? railwayOperators[0]
+  const visibleRoutes = routes.filter((route) => route.operatorId === selectedOperator.id)
   const routeProgress = useMemo(() => new Map(routes.map((route) => {
     const stationIds = routeStationIds(route.id)
     return [route.id, {
@@ -28,6 +33,15 @@ export function HomePage() {
       completed: completedStationCount(stationIds, stationById, state.progress),
     }]
   })), [routeStationIds, state.progress, stationById])
+  const operatorProgress = useMemo(() => new Map(railwayOperators.map((operator) => {
+    const stationIds = [...new Set(operator.routeIds.flatMap(
+      (routeId) => routeProgress.get(routeId)?.stationIds ?? [],
+    ))]
+    return [operator.id, {
+      stationIds,
+      completed: completedStationCount(stationIds, stationById, state.progress),
+    }]
+  })), [routeProgress, state.progress, stationById])
   const selectedProgress = routeProgress.get(selectedRoute.id) ?? { stationIds: [], completed: 0 }
   const selectedSegment = selectedRoute.segmentLabel.replace(/（\d+えき）$/u, '')
   const celebration = (location.state ?? {}) as CelebrationState
@@ -37,9 +51,23 @@ export function HomePage() {
   )
 
   const chooseRoute = (routeId: string) => {
+    const route = routes.find((item) => item.id === routeId)
+    if (route) {
+      setLastRouteByOperator((current) => ({ ...current, [route.operatorId]: routeId }))
+    }
     setParams({ route: routeId })
     setZoom(1)
     setMapResetKey((value) => value + 1)
+  }
+
+  const chooseOperator = (operatorId: string) => {
+    const operator = railwayOperatorById.get(operatorId)
+    if (!operator) return
+    const rememberedRouteId = lastRouteByOperator[operatorId]
+    const routeId = rememberedRouteId && operator.routeIds.includes(rememberedRouteId)
+      ? rememberedRouteId
+      : operator.routeIds[0]
+    if (routeId) chooseRoute(routeId)
   }
 
   return (
@@ -82,22 +110,51 @@ export function HomePage() {
             </div>
           </div>
 
-          <nav className="route-tabs" aria-label="ろせんを えらぶ">
-            {routes.map((route) => (
-              <button
-                key={route.id}
-                type="button"
-                className={route.id === selectedRoute.id ? 'route-tab route-tab--active' : 'route-tab'}
-                style={{ '--route-color': route.color } as React.CSSProperties}
-                aria-pressed={route.id === selectedRoute.id}
-                onClick={() => chooseRoute(route.id)}
-              >
-                <span aria-hidden="true" />
-                <strong>{route.name}</strong>
-                <small>{routeProgress.get(route.id)?.completed ?? 0}/{routeProgress.get(route.id)?.stationIds.length ?? 0}</small>
-              </button>
-            ))}
-          </nav>
+          <div className="route-picker">
+            <div className="route-picker-group">
+              <p className="route-picker-label"><span>1</span>てつどうがいしゃ</p>
+              <nav className="operator-tabs" aria-label="てつどうがいしゃを えらぶ">
+                {railwayOperators.map((operator) => {
+                  const progress = operatorProgress.get(operator.id) ?? { stationIds: [], completed: 0 }
+                  return (
+                    <button
+                      key={operator.id}
+                      type="button"
+                      className={operator.id === selectedOperator.id ? 'operator-tab operator-tab--active' : 'operator-tab'}
+                      style={{ '--operator-color': operator.color } as React.CSSProperties}
+                      aria-pressed={operator.id === selectedOperator.id}
+                      onClick={() => chooseOperator(operator.id)}
+                    >
+                      <i className="operator-tab-mark" aria-hidden="true"><span /><span /><span /></i>
+                      <span className="operator-tab-copy">
+                        <strong>{operator.name}</strong>
+                        <small>{operator.routeIds.length}ろせん　{progress.completed}/{progress.stationIds.length}えき</small>
+                      </span>
+                    </button>
+                  )
+                })}
+              </nav>
+            </div>
+            <div className="route-picker-group">
+              <p className="route-picker-label"><span>2</span>ろせん</p>
+              <nav className="route-tabs" aria-label={`${selectedOperator.name}の ろせんを えらぶ`}>
+                {visibleRoutes.map((route) => (
+                  <button
+                    key={route.id}
+                    type="button"
+                    className={route.id === selectedRoute.id ? 'route-tab route-tab--active' : 'route-tab'}
+                    style={{ '--route-color': route.color } as React.CSSProperties}
+                    aria-pressed={route.id === selectedRoute.id}
+                    onClick={() => chooseRoute(route.id)}
+                  >
+                    <span aria-hidden="true" />
+                    <strong>{route.name}</strong>
+                    <small>{routeProgress.get(route.id)?.completed ?? 0}/{routeProgress.get(route.id)?.stationIds.length ?? 0}</small>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
           <div className="route-progress" style={{ '--route-color': selectedRoute.color } as React.CSSProperties}>
             <div className="route-progress-copy">
               <strong>{selectedRoute.name}</strong>

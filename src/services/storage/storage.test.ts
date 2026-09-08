@@ -52,4 +52,17 @@ describe('バックアップ検証', () => {
     }
     expect(parseBackup(JSON.stringify(oldState)).progress['tokyu-ty05'].freeWrittenPositions).toEqual([])
   })
+
+  it('相鉄線へ追加したカスタム駅を読み込める', () => {
+    const state = defaultState()
+    state.customStations.push({
+      id: 'custom-sotetsu',
+      displayName: '追加駅',
+      reading: 'ついかえき',
+      builtIn: false,
+      routeId: 'sotetsu-main',
+      insertAfterStationId: 'sotetsu-so02',
+    })
+    expect(parseBackup(serializeBackup(state)).customStations[0]).toEqual(state.customStations[0])
+  })
 })

@@ -1,13 +1,23 @@
-import type { Route, Station } from '../domain/types'
+import type { RailwayOperator, Route, Station } from '../domain/types'
 
 const TOKYU_SOURCE = 'https://www.tokyu.co.jp/railway/station/'
+const SOTETSU_SOURCE = 'https://www.sotetsu.co.jp/train/stations/'
 
-export const OFFICIAL_ROUTE_COUNT = 9
-export const OFFICIAL_STATION_COUNT = 99
-export const NORMALIZED_STATION_COUNT = 98
+export const TOKYU_ROUTE_COUNT = 9
+export const TOKYU_OFFICIAL_STATION_COUNT = 99
+export const SOTETSU_ROUTE_COUNT = 3
+export const SOTETSU_OFFICIAL_STATION_COUNT = 27
+export const OFFICIAL_ROUTE_COUNT = TOKYU_ROUTE_COUNT + SOTETSU_ROUTE_COUNT
+export const OFFICIAL_STATION_COUNT =
+  TOKYU_OFFICIAL_STATION_COUNT + SOTETSU_OFFICIAL_STATION_COUNT
+export const NORMALIZED_STATION_COUNT = 123
 
 function station(id: string, displayName: string, reading: string): Station {
   return { id, displayName, reading, builtIn: true, sourceUrl: TOKYU_SOURCE }
+}
+
+function sotetsuStation(id: string, displayName: string, reading: string): Station {
+  return { id, displayName, reading, builtIn: true, sourceUrl: SOTETSU_SOURCE }
 }
 
 export const builtInStations: Station[] = [
@@ -126,6 +136,37 @@ export const builtInStations: Station[] = [
   // こどもの国線（長津田は田園都市線のStation IDを共有）
   station('tokyu-kd02', '恩田', 'おんだ'),
   station('tokyu-kd03', 'こどもの国', 'こどものくに'),
+
+  // 相鉄本線（横浜は東横線のStation IDを共有）
+  sotetsuStation('sotetsu-so02', '平沼橋', 'ひらぬまばし'),
+  sotetsuStation('sotetsu-so03', '西横浜', 'にしよこはま'),
+  sotetsuStation('sotetsu-so04', '天王町', 'てんのうちょう'),
+  sotetsuStation('sotetsu-so05', '星川', 'ほしかわ'),
+  sotetsuStation('sotetsu-so06', '和田町', 'わだまち'),
+  sotetsuStation('sotetsu-so07', '上星川', 'かみほしかわ'),
+  sotetsuStation('sotetsu-so08', '西谷', 'にしや'),
+  sotetsuStation('sotetsu-so09', '鶴ケ峰', 'つるがみね'),
+  sotetsuStation('sotetsu-so10', '二俣川', 'ふたまたがわ'),
+  sotetsuStation('sotetsu-so11', '希望ケ丘', 'きぼうがおか'),
+  sotetsuStation('sotetsu-so12', '三ツ境', 'みつきょう'),
+  sotetsuStation('sotetsu-so13', '瀬谷', 'せや'),
+  sotetsuStation('sotetsu-so14', '大和', 'やまと'),
+  sotetsuStation('sotetsu-so15', '相模大塚', 'さがみおおつか'),
+  sotetsuStation('sotetsu-so16', 'さがみ野', 'さがみの'),
+  sotetsuStation('sotetsu-so17', 'かしわ台', 'かしわだい'),
+  sotetsuStation('sotetsu-so18', '海老名', 'えびな'),
+
+  // 相鉄いずみ野線（二俣川は相鉄本線のStation IDを共有）
+  sotetsuStation('sotetsu-so31', '南万騎が原', 'みなみまきがはら'),
+  sotetsuStation('sotetsu-so32', '緑園都市', 'りょくえんとし'),
+  sotetsuStation('sotetsu-so33', '弥生台', 'やよいだい'),
+  sotetsuStation('sotetsu-so34', 'いずみ野', 'いずみの'),
+  sotetsuStation('sotetsu-so35', 'いずみ中央', 'いずみちゅうおう'),
+  sotetsuStation('sotetsu-so36', 'ゆめが丘', 'ゆめがおか'),
+  sotetsuStation('sotetsu-so37', '湘南台', 'しょうなんだい'),
+
+  // 相鉄新横浜線（西谷・新横浜は既存のStation IDを共有）
+  sotetsuStation('sotetsu-so51', '羽沢横浜国大', 'はざわよこはまこくだい'),
 ]
 
 const toyokoIds = Array.from({ length: 21 }, (_, index) => `tokyu-ty${String(index + 1).padStart(2, '0')}`)
@@ -149,20 +190,63 @@ function codes(prefix: string, count: number): string[] {
 }
 
 export const routes: Route[] = [
-  { id: 'toyoko', name: 'とうよこせん', color: '#db5570', segmentLabel: 'しぶや 〜 よこはま（21えき）', orderedStationIds: toyokoIds, stationCodes: codes('TY', 21), sourceUrl: 'https://www.tokyu.co.jp/railway/ty/' },
-  { id: 'meguro', name: 'めぐろせん', color: '#319c95', segmentLabel: 'めぐろ 〜 ひよし（13えき）', orderedStationIds: meguroIds, stationCodes: codes('MG', 13), sourceUrl: 'https://www.tokyu.co.jp/railway/mg/' },
-  { id: 'shinyokohama', name: 'とうきゅうしんよこはません', color: '#7d69a8', segmentLabel: 'ひよし 〜 しんよこはま（3えき）', orderedStationIds: shinyokohamaIds, stationCodes: ['SH03', 'SH02', 'SH01'], sourceUrl: 'https://www.tokyu.co.jp/railway/sh/' },
-  { id: 'denentoshi', name: 'でんえんとしせん', color: '#4d9f63', segmentLabel: 'しぶや 〜 ちゅうおうりんかん（27えき）', orderedStationIds: denentoshiIds, stationCodes: codes('DT', 27), sourceUrl: 'https://www.tokyu.co.jp/railway/dt/' },
+  { id: 'toyoko', operatorId: 'tokyu', name: 'とうよこせん', color: '#db5570', segmentLabel: 'しぶや 〜 よこはま（21えき）', orderedStationIds: toyokoIds, stationCodes: codes('TY', 21), sourceUrl: 'https://www.tokyu.co.jp/railway/ty/' },
+  { id: 'meguro', operatorId: 'tokyu', name: 'めぐろせん', color: '#319c95', segmentLabel: 'めぐろ 〜 ひよし（13えき）', orderedStationIds: meguroIds, stationCodes: codes('MG', 13), sourceUrl: 'https://www.tokyu.co.jp/railway/mg/' },
+  { id: 'shinyokohama', operatorId: 'tokyu', name: 'とうきゅうしんよこはません', color: '#7d69a8', segmentLabel: 'ひよし 〜 しんよこはま（3えき）', orderedStationIds: shinyokohamaIds, stationCodes: ['SH03', 'SH02', 'SH01'], sourceUrl: 'https://www.tokyu.co.jp/railway/sh/' },
+  { id: 'denentoshi', operatorId: 'tokyu', name: 'でんえんとしせん', color: '#4d9f63', segmentLabel: 'しぶや 〜 ちゅうおうりんかん（27えき）', orderedStationIds: denentoshiIds, stationCodes: codes('DT', 27), sourceUrl: 'https://www.tokyu.co.jp/railway/dt/' },
   {
-    id: 'oimachi', name: 'おおいまちせん', color: '#e58b42', segmentLabel: 'おおいまち 〜 みぞのくち（16えき）',
+    id: 'oimachi', operatorId: 'tokyu', name: 'おおいまちせん', color: '#e58b42', segmentLabel: 'おおいまち 〜 みぞのくち（16えき）',
     orderedStationIds: oimachiIds, stationCodes: codes('OM', 16), sourceUrl: 'https://www.tokyu.co.jp/railway/om/',
     note: 'ふたこしんち・たかつには、おおいまちせんの いちぶの かくえきていしゃが とまります。',
   },
-  { id: 'ikegami', name: 'いけがみせん', color: '#c94d91', segmentLabel: 'ごたんだ 〜 かまた（15えき）', orderedStationIds: ikegamiIds, stationCodes: codes('IK', 15), sourceUrl: 'https://www.tokyu.co.jp/railway/ik/' },
-  { id: 'tamagawa', name: 'とうきゅうたまがわせん', color: '#ae4a78', segmentLabel: 'たまがわ 〜 かまた（7えき）', orderedStationIds: tamagawaIds, stationCodes: codes('TM', 7), sourceUrl: 'https://www.tokyu.co.jp/railway/tm/' },
-  { id: 'setagaya', name: 'せたがやせん', color: '#d49b18', segmentLabel: 'さんげんぢゃや 〜 しもたかいど（10えき）', orderedStationIds: setagayaIds, stationCodes: codes('SG', 10), sourceUrl: 'https://www.tokyu.co.jp/railway/sg/' },
-  { id: 'kodomonokuni', name: 'こどものくにせん', color: '#3788bd', segmentLabel: 'ながつた 〜 こどものくに（3えき）', orderedStationIds: kodomonokuniIds, stationCodes: codes('KD', 3), sourceUrl: 'https://www.tokyu.co.jp/railway/kd/' },
+  { id: 'ikegami', operatorId: 'tokyu', name: 'いけがみせん', color: '#c94d91', segmentLabel: 'ごたんだ 〜 かまた（15えき）', orderedStationIds: ikegamiIds, stationCodes: codes('IK', 15), sourceUrl: 'https://www.tokyu.co.jp/railway/ik/' },
+  { id: 'tamagawa', operatorId: 'tokyu', name: 'とうきゅうたまがわせん', color: '#ae4a78', segmentLabel: 'たまがわ 〜 かまた（7えき）', orderedStationIds: tamagawaIds, stationCodes: codes('TM', 7), sourceUrl: 'https://www.tokyu.co.jp/railway/tm/' },
+  { id: 'setagaya', operatorId: 'tokyu', name: 'せたがやせん', color: '#d49b18', segmentLabel: 'さんげんぢゃや 〜 しもたかいど（10えき）', orderedStationIds: setagayaIds, stationCodes: codes('SG', 10), sourceUrl: 'https://www.tokyu.co.jp/railway/sg/' },
+  { id: 'kodomonokuni', operatorId: 'tokyu', name: 'こどものくにせん', color: '#3788bd', segmentLabel: 'ながつた 〜 こどものくに（3えき）', orderedStationIds: kodomonokuniIds, stationCodes: codes('KD', 3), sourceUrl: 'https://www.tokyu.co.jp/railway/kd/' },
+  {
+    id: 'sotetsu-main', operatorId: 'sotetsu', name: 'そうてつほんせん', color: '#315a7d',
+    segmentLabel: 'よこはま 〜 えびな（18えき）',
+    orderedStationIds: [
+      'tokyu-ty21', 'sotetsu-so02', 'sotetsu-so03', 'sotetsu-so04', 'sotetsu-so05', 'sotetsu-so06',
+      'sotetsu-so07', 'sotetsu-so08', 'sotetsu-so09', 'sotetsu-so10', 'sotetsu-so11', 'sotetsu-so12',
+      'sotetsu-so13', 'sotetsu-so14', 'sotetsu-so15', 'sotetsu-so16', 'sotetsu-so17', 'sotetsu-so18',
+    ],
+    stationCodes: codes('SO', 18), sourceUrl: SOTETSU_SOURCE,
+  },
+  {
+    id: 'sotetsu-izumino', operatorId: 'sotetsu', name: 'そうてついずみのせん', color: '#2f8c83',
+    segmentLabel: 'ふたまたがわ 〜 しょうなんだい（8えき）',
+    orderedStationIds: [
+      'sotetsu-so10', 'sotetsu-so31', 'sotetsu-so32', 'sotetsu-so33',
+      'sotetsu-so34', 'sotetsu-so35', 'sotetsu-so36', 'sotetsu-so37',
+    ],
+    stationCodes: ['SO10', 'SO31', 'SO32', 'SO33', 'SO34', 'SO35', 'SO36', 'SO37'],
+    sourceUrl: SOTETSU_SOURCE,
+  },
+  {
+    id: 'sotetsu-shinyokohama', operatorId: 'sotetsu', name: 'そうてつしんよこはません', color: '#7663a8',
+    segmentLabel: 'にしや 〜 しんよこはま（3えき）',
+    orderedStationIds: ['sotetsu-so08', 'sotetsu-so51', 'tokyu-sh01'],
+    stationCodes: ['SO08', 'SO51', 'SO52'], sourceUrl: SOTETSU_SOURCE,
+  },
 ]
+
+export const railwayOperators: RailwayOperator[] = [
+  {
+    id: 'tokyu', name: 'とうきゅうでんてつ', displayName: '東急電鉄', shortName: 'とうきゅう',
+    color: '#b6553f', routeIds: routes.filter((route) => route.operatorId === 'tokyu').map((route) => route.id),
+    sourceUrl: TOKYU_SOURCE,
+  },
+  {
+    id: 'sotetsu', name: 'そうてつ', displayName: '相模鉄道', shortName: 'そうてつ',
+    color: '#315a7d', routeIds: routes.filter((route) => route.operatorId === 'sotetsu').map((route) => route.id),
+    sourceUrl: SOTETSU_SOURCE,
+  },
+]
+
+export const railwayOperatorById = new Map(
+  railwayOperators.map((operator) => [operator.id, operator]),
+)
 
 export function stationCodeForRoute(route: Route, stationId: string): string | undefined {
   const index = route.orderedStationIds.indexOf(stationId)

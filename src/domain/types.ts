@@ -12,6 +12,7 @@ export interface Station {
 
 export interface Route {
   id: string
+  operatorId: string
   name: string
   color: string
   segmentLabel: string
@@ -19,6 +20,16 @@ export interface Route {
   stationCodes: string[]
   sourceUrl: string
   note?: string
+}
+
+export interface RailwayOperator {
+  id: string
+  name: string
+  displayName: string
+  shortName: string
+  color: string
+  routeIds: string[]
+  sourceUrl: string
 }
 
 export interface CustomStation extends Station {
