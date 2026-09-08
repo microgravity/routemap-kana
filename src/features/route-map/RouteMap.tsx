@@ -3,6 +3,7 @@ import { stationCodeForRoute } from '../../data/stations'
 import type { Route } from '../../domain/types'
 import { isStationFreeWritten, isStationPracticed } from '../../domain/progress'
 import { useAppState } from '../../app/AppState'
+import { buildRouteMapLayout } from './routeMapLayout'
 
 interface Props {
   route: Route
@@ -17,9 +18,8 @@ interface Props {
 export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, scrollResetKey, onSelect }: Props) {
   const { stationById, state } = useAppState()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const width = Math.max(980, 140 + stationIds.length * 138)
+  const { width, points } = buildRouteMapLayout(stationIds, stationById)
   const y = 142
-  const points = stationIds.map((id, index) => ({ id, x: 90 + index * ((width - 180) / Math.max(1, stationIds.length - 1)) }))
   const celebratedIndex = points.findIndex((point) => point.id === celebrateStationId)
   const celebratedPoint = points[celebratedIndex]
   const previousAdded = celebratedIndex > 0 && state.progress[points[celebratedIndex - 1]?.id]?.added
