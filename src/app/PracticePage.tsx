@@ -4,8 +4,8 @@ import { AppHeader } from '../components/AppHeader'
 import { hasGlyph } from '../data/kana'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
-import { nextUnpracticedPosition, reconcileProgress } from '../domain/progress'
-import { evaluateTrace, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
+import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress } from '../domain/progress'
+import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
 import { sampleGlyphGuide } from '../features/practice/sampleGlyphGuide'
 import { WritingPad } from '../features/practice/WritingPad'
@@ -33,7 +33,7 @@ export function PracticePage() {
   const [allowTraceOverride, setAllowTraceOverride] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const [replayKey, setReplayKey] = useState(0)
-  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; traceNotice?: string } | null>(null)
+  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; notice?: string; freeWritingPassed: boolean } | null>(null)
   const kana = characters[index] ?? ''
   const traceAvailable = hasGlyph(kana)
   const activeMode = mode === 'trace' && traceAvailable ? 'trace' : 'free'
@@ -44,8 +44,8 @@ export function PracticePage() {
   }, [index, setCurrentPosition, station])
 
   useEffect(() => {
-    setTraceGuide(activeMode === 'trace' ? sampleGlyphGuide(kana) : null)
-  }, [activeMode, kana])
+    setTraceGuide(traceAvailable ? sampleGlyphGuide(kana) : null)
+  }, [kana, traceAvailable])
 
   if (!station || characters.length === 0) {
     return <main className="simple-message"><h1>えきが みつかりません</h1><Link to="/">ろせんずへ</Link></main>
@@ -64,9 +64,21 @@ export function PracticePage() {
     navigate(`/practice/${station.id}/${nextIndex}?route=${routeId}`, { replace: true })
   }
 
+  const chooseMode = (nextMode: 'trace' | 'free') => {
+    setMode(nextMode)
+    setShowGuide(nextMode === 'trace')
+    setHasInk(false)
+    setInputStrokes([])
+    setTraceMessage('')
+    setAllowTraceOverride(false)
+    setReward(null)
+    setResetKey((value) => value + 1)
+  }
+
   const done = (force = false) => {
     if (!hasInk) return
-    let traceNotice = ''
+    let notice = ''
+    let freeWritingPassed = false
     if (activeMode === 'trace' && !force) {
       if (!traceGuide) {
         setTraceMessage('おてほんを よみこめなかったよ')
@@ -79,15 +91,29 @@ export function PracticePage() {
         setAllowTraceOverride(true)
         return
       }
-      traceNotice = traceAdvisory(evaluation)
+      notice = traceAdvisory(evaluation)
     }
-    const result = markPositionComplete(station.id, index)
+    if (activeMode === 'free') {
+      if (traceGuide) {
+        const evaluation = evaluateFreeWriting(inputStrokes, traceGuide)
+        freeWritingPassed = evaluation.passed
+        notice = evaluation.passed
+          ? 'じぶんの ちからで かけた！'
+          : `${freeWritingFeedback(evaluation)} れんしゅうは できたよ。おてほんなしクリアは またこんど！`
+      } else {
+        freeWritingPassed = true
+        notice = 'この もじは じぶんで できたと はんていしたよ！'
+      }
+    }
+    const result = markPositionComplete(station.id, index, activeMode === 'free' && freeWritingPassed)
     setTraceMessage('')
     setAllowTraceOverride(false)
-    setReward({ ...result, traceNotice })
+    setReward({ ...result, notice, freeWritingPassed })
   }
 
-  const next = () => goTo(nextUnpracticedPosition(progress, station.reading, index))
+  const next = () => goTo(activeMode === 'free'
+    ? nextFreeWritingPosition(progress, station.reading, index)
+    : nextUnpracticedPosition(progress, station.reading, index))
 
   return (
     <div className={`page-shell practice-page practice-page--${state.settings.handedness} ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
@@ -96,10 +122,12 @@ export function PracticePage() {
         <div className="practice-topbar">
           <Link className="back-link" to={`/station/${station.id}?route=${routeId}`}>← {station.reading}</Link>
           <div className="practice-mode-area">
-            {activeMode === 'trace' && <span className="trace-level">はんてい：{strictnessNames[state.settings.traceStrictness]}</span>}
+            {activeMode === 'trace'
+              ? <span className="trace-level">はんてい：{strictnessNames[state.settings.traceStrictness]}</span>
+              : <span className="trace-level trace-level--free">おてほんなし：かたちだけ</span>}
             <div className="mode-switch" aria-label="かきかた">
-              <button type="button" className={activeMode === 'trace' ? 'selected' : ''} disabled={!traceAvailable} onClick={() => { setMode('trace'); setShowGuide(true); setTraceMessage(''); setAllowTraceOverride(false) }}>なぞる</button>
-              <button type="button" className={activeMode === 'free' ? 'selected' : ''} onClick={() => { setMode('free'); setTraceMessage(''); setAllowTraceOverride(false) }}>じぶんで かく</button>
+              <button type="button" className={activeMode === 'trace' ? 'selected' : ''} disabled={!traceAvailable} onClick={() => chooseMode('trace')}>なぞる</button>
+              <button type="button" className={activeMode === 'free' ? 'selected' : ''} onClick={() => chooseMode('free')}>じぶんで かく</button>
             </div>
           </div>
         </div>
@@ -111,16 +139,17 @@ export function PracticePage() {
               reading={station.reading}
               activeIndex={index}
               practicedPositions={progress.practicedPositions}
+              freeWrittenPositions={progress.freeWrittenPositions}
               onSpeak={speak}
               onChoose={goTo}
             />
             <div className="current-kana"><span>{index + 1}</span>{kana}</div>
-            {!hasGlyph(kana) && <p className="notice notice--small">このもじは フォントのおてほんです。じぶんで かいてみよう。</p>}
+            {!hasGlyph(kana) && <p className="notice notice--small">このもじは おてほんなしで かいて、じぶんで できたか きめよう。</p>}
           </div>
 
           <WritingPad
             kana={kana}
-            showGuide={showGuide}
+            showGuide={activeMode === 'trace' && showGuide}
             animateGuide={activeMode === 'trace' && !state.settings.reduceMotion}
             replayKey={replayKey}
             resetKey={resetKey}
@@ -130,8 +159,8 @@ export function PracticePage() {
 
           <aside className="practice-tools" aria-label="れんしゅうの そうさ">
             <button type="button" className="tool-button" onClick={() => speak(speechForKana(kana))}><span>♪</span>きく</button>
-            <button type="button" className="tool-button" onClick={() => { setShowGuide(true); setReplayKey((value) => value + 1) }}><span>▶</span>おてほん</button>
-            <button type="button" className="tool-button" onClick={() => setShowGuide((value) => !value)}><span>◉</span>{showGuide ? 'かくす' : 'みる'}</button>
+            <button type="button" className="tool-button" disabled={activeMode === 'free'} onClick={() => { setShowGuide(true); setReplayKey((value) => value + 1) }}><span>▶</span>おてほん</button>
+            <button type="button" className="tool-button" disabled={activeMode === 'free'} onClick={() => setShowGuide((value) => !value)}><span>◉</span>{showGuide ? 'かくす' : 'みる'}</button>
             <button type="button" className={`done-button ${allowTraceOverride ? 'done-button--override' : ''}`} disabled={!hasInk} onClick={() => done(allowTraceOverride)}>
               <span>✓</span>{allowTraceOverride ? 'このまま できた' : 'できた'}
             </button>
@@ -148,16 +177,16 @@ export function PracticePage() {
           <div className="reward-card">
             <div className="haniwa" aria-hidden="true"><span className="haniwa-eye" /><span className="haniwa-eye" /><i /><b /></div>
             <p className="eyebrow">{kana} が かけたね！</p>
-            <h2 id="reward-title">{reward.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</h2>
-            {reward.traceNotice && <p className="reward-notice">{reward.traceNotice}</p>}
+            <h2 id="reward-title">{reward.freeWritingPassed ? 'おてほんなし クリア！' : reward.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</h2>
+            {reward.notice && <p className={`reward-notice ${activeMode === 'free' && !reward.freeWritingPassed ? 'reward-notice--try-again' : ''}`}>{reward.notice}</p>}
             <div className="reward-actions">
-              <button type="button" className="soft-button" onClick={reward.allComplete ? () => goTo(0) : next}>
-                {reward.allComplete ? 'もういちど かく' : 'つぎの もじ'}
+              <button type="button" className="soft-button" onClick={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? () => goTo(0) : next}>
+                {(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? 'もういちど かく' : 'つぎの もじ'}
               </button>
               <button
                 type="button"
                 className="primary-button"
-                onClick={() => navigate(`/?route=${routeId === 'found' ? 'toyoko' : routeId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd } })}
+                onClick={() => navigate(`/?route=${routeId === 'found' ? 'toyoko' : routeId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten } })}
               >
                 ろせんずを みる
               </button>

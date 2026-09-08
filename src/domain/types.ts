@@ -36,6 +36,7 @@ export interface StationOverride {
 export interface PracticeProgress {
   readingSnapshot: string
   practicedPositions: number[]
+  freeWrittenPositions: number[]
   currentPosition: number
   added: boolean
   addedAt?: string

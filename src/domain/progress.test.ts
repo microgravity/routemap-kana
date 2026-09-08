@@ -1,4 +1,4 @@
-import { completePosition, completedStationCount, freshProgress, isStationPracticed, reconcileProgress } from './progress'
+import { completeFreeWrittenPosition, completePosition, completedStationCount, freshProgress, isStationFreeWritten, isStationPracticed, practicedKanaSet, reconcileProgress } from './progress'
 import type { Station } from './types'
 
 describe('練習進捗', () => {
@@ -13,6 +13,18 @@ describe('練習進捗', () => {
     const first = completePosition(freshProgress('おお'), 0)
     const second = completePosition(first, 1)
     expect(isStationPracticed(second, 'おお')).toBe(true)
+  })
+
+  it('お手本なし完了は通常完了の上位として位置ごとに記録する', () => {
+    const first = completeFreeWrittenPosition(freshProgress('おお'), 0)
+    expect(first.practicedPositions).toEqual([0])
+    expect(first.freeWrittenPositions).toEqual([0])
+    expect(isStationPracticed(first, 'おお')).toBe(false)
+    expect(isStationFreeWritten(first, 'おお')).toBe(false)
+
+    const second = completeFreeWrittenPosition(first, 1)
+    expect(isStationPracticed(second, 'おお')).toBe(true)
+    expect(isStationFreeWritten(second, 'おお')).toBe(true)
   })
 
   it('読みが変わったら古い位置進捗を引き継がない', () => {
@@ -35,5 +47,17 @@ describe('練習進捗', () => {
     expect(completedStationCount(['shared', 'custom'], stations, progress)).toBe(2)
     expect(completedStationCount(['shared', 'custom', 'partial'], stations, progress)).toBe(2)
     expect(completedStationCount(['shared', 'shared'], stations, progress)).toBe(1)
+  })
+
+  it('一度でも練習した文字を駅データから求める', () => {
+    const stations: Station[] = [
+      { id: 'one', displayName: '一', reading: 'がくげい', builtIn: true },
+      { id: 'custom', displayName: '追加', reading: 'いけ', builtIn: false },
+    ]
+    const progress = {
+      one: completePosition(completePosition(freshProgress('がくげい'), 0), 3),
+      custom: completePosition(freshProgress('いけ'), 0),
+    }
+    expect(practicedKanaSet(stations, progress)).toEqual(new Set(['が', 'い']))
   })
 })

@@ -58,6 +58,7 @@ export function StationPage() {
             reading={station.reading}
             activeIndex={selectedPosition}
             practicedPositions={progress.practicedPositions}
+            freeWrittenPositions={progress.freeWrittenPositions}
             onSpeak={speak}
             onChoose={setSelectedPosition}
           />

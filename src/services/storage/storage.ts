@@ -102,12 +102,18 @@ function validateProgress(value: unknown, reading: string): PracticeProgress | n
   const length = splitKana(reading).length
   if (!Array.isArray(value.practicedPositions)) return null
   if (!value.practicedPositions.every((item) => Number.isInteger(item) && item >= 0 && item < length)) return null
+  const practicedPositions = value.practicedPositions as number[]
+  const freeWrittenPositions = value.freeWrittenPositions === undefined ? [] : value.freeWrittenPositions
+  if (!Array.isArray(freeWrittenPositions)) return null
+  if (!freeWrittenPositions.every((item) => Number.isInteger(item) && item >= 0 && item < length)) return null
+  if (!freeWrittenPositions.every((item) => practicedPositions.includes(item))) return null
   if (!Number.isInteger(value.currentPosition) || (value.currentPosition as number) < 0 || (value.currentPosition as number) >= length) return null
   if (typeof value.added !== 'boolean') return null
   if (value.addedAt !== undefined && typeof value.addedAt !== 'string') return null
   return {
     readingSnapshot: value.readingSnapshot,
-    practicedPositions: [...new Set(value.practicedPositions as number[])].sort((a, b) => a - b),
+    practicedPositions: [...new Set(practicedPositions)].sort((a, b) => a - b),
+    freeWrittenPositions: [...new Set(freeWrittenPositions as number[])].sort((a, b) => a - b),
     currentPosition: value.currentPosition as number,
     added: value.added,
     addedAt: value.addedAt as string | undefined,

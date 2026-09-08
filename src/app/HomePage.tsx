@@ -9,6 +9,7 @@ import { useAppState } from './AppState'
 interface CelebrationState {
   celebrateStationId?: string
   firstAdd?: boolean
+  allFreeWritten?: boolean
 }
 
 export function HomePage() {
@@ -50,7 +51,7 @@ export function HomePage() {
           <div className="celebration" role="status">
             <span className="celebration-spark" aria-hidden="true">✦</span>
             <div>
-              <strong>{celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
+              <strong>{celebration.allFreeWritten ? 'おてほんなしで ぜんぶ かけた！' : celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
               <span>{stationById.get(celebration.celebrateStationId)?.reading}</span>
             </div>
           </div>
@@ -123,6 +124,7 @@ export function HomePage() {
             <span><i className="legend-dot" />まだの えき</span>
             <span><i className="legend-dot legend-dot--added" />いちぶ かいた</span>
             <span><i className="legend-star">★</i>ぜんぶ かいた</span>
+            <span><i className="legend-star legend-star--free-written">★★</i>おてほんなしで かいた</span>
           </div>
         </section>
 

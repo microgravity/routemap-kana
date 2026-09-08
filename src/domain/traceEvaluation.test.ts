@@ -1,5 +1,5 @@
 import type { Point } from './input'
-import { evaluateTrace, traceAdvisory, traceFeedback, type TraceGuideStroke } from './traceEvaluation'
+import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from './traceEvaluation'
 
 const line = (from: Point, to: Point, steps = 12): Point[] => Array.from({ length: steps }, (_, index) => ({
   x: from.x + ((to.x - from.x) * index) / (steps - 1),
@@ -59,5 +59,39 @@ describe('なぞり補助判定', () => {
   it('短すぎる線を成功にしない', () => {
     const input = [line({ x: 100, y: 120 }, { x: 112, y: 120 }, 3)]
     expect(evaluateTrace(input, guide).passed).toBe(false)
+  })
+})
+
+describe('お手本なしの字形判定', () => {
+  it('位置と大きさが違っても同じ字形なら成功にする', () => {
+    const input = [
+      line({ x: 205, y: 330 }, { x: 45, y: 330 }),
+      line({ x: 125, y: 520 }, { x: 125, y: 360 }),
+    ]
+    expect(evaluateFreeWriting(input, guide).passed).toBe(true)
+  })
+
+  it('書き順と向きは判定に使わない', () => {
+    const input = [
+      line({ x: 125, y: 360 }, { x: 125, y: 520 }),
+      line({ x: 205, y: 330 }, { x: 45, y: 330 }),
+    ]
+    expect(evaluateFreeWriting(input, guide).passed).toBe(true)
+  })
+
+  it('字形が大きく違う線は上位クリアにしない', () => {
+    const input = [
+      line({ x: 50, y: 320 }, { x: 210, y: 520 }),
+      line({ x: 210, y: 320 }, { x: 50, y: 520 }),
+    ]
+    const result = evaluateFreeWriting(input, guide)
+    expect(result.passed).toBe(false)
+    expect(freeWritingFeedback(result)).toContain('かたち')
+  })
+
+  it('短すぎる線は上位クリアにしない', () => {
+    const result = evaluateFreeWriting([line({ x: 10, y: 10 }, { x: 30, y: 10 }, 3)], guide)
+    expect(result.passed).toBe(false)
+    expect(result.issues).toContain('too-short')
   })
 })

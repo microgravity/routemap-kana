@@ -4,6 +4,7 @@ import { AppHeader } from '../components/AppHeader'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
 import { routes, stationCodeForRoute } from '../data/stations'
 import { normalizeReading, splitKana } from '../domain/kana'
+import { practicedKanaSet } from '../domain/progress'
 import { buildKanaStationIndex, matchesForKana } from '../domain/stationIndex'
 import type { Route } from '../domain/types'
 import { useAppState } from './AppState'
@@ -19,6 +20,7 @@ export function KanaIndexPage() {
     [routeStationIds],
   )
   const index = useMemo(() => buildKanaStationIndex(stations, indexedRoutes), [indexedRoutes, stations])
+  const practicedKana = useMemo(() => practicedKanaSet(stations, state.progress), [state.progress, stations])
   const normalizedKana = routeKana ? normalizeReading(routeKana) : ''
   const selectedKana = splitKana(normalizedKana).length === 1 && listedKana.has(normalizedKana) ? normalizedKana : ''
   const matches = selectedKana ? matchesForKana(index, selectedKana) : []
@@ -81,11 +83,12 @@ export function KanaIndexPage() {
               <p className="eyebrow">もじを おして みつけよう</p>
               <h1 id="kana-index-title">ひらがなから さがす</h1>
               <p>えきの なまえに ある もじは、おせるよ。</p>
+              <p className="kana-practice-legend"><i aria-hidden="true">✓</i> れんしゅうした もじ</p>
             </div>
-            <KanaTable title="ごじゅうおん" rows={basicKanaRows} index={index} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
+            <KanaTable title="ごじゅうおん" rows={basicKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
             <div className="kana-extra-grid">
-              <KanaTable title="だくおん" rows={voicedKanaRows} index={index} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
-              <KanaTable title="ちいさい もじ" rows={smallKanaRows} index={index} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
+              <KanaTable title="だくおん" rows={voicedKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
+              <KanaTable title="ちいさい もじ" rows={smallKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
             </div>
           </section>
         )}
@@ -94,7 +97,7 @@ export function KanaIndexPage() {
   )
 }
 
-function KanaTable({ title, rows, index, onChoose }: { title: string; rows: Array<Array<string | null>>; index: ReturnType<typeof buildKanaStationIndex>; onChoose: (kana: string) => void }) {
+function KanaTable({ title, rows, index, practicedKana, onChoose }: { title: string; rows: Array<Array<string | null>>; index: ReturnType<typeof buildKanaStationIndex>; practicedKana: ReadonlySet<string>; onChoose: (kana: string) => void }) {
   const titleId = `kana-table-${title === 'ごじゅうおん' ? 'basic' : title === 'だくおん' ? 'voiced' : 'small'}`
   return (
     <section className="kana-table-card" aria-labelledby={titleId}>
@@ -103,16 +106,17 @@ function KanaTable({ title, rows, index, onChoose }: { title: string; rows: Arra
         {rows.flatMap((row, rowIndex) => row.map((kana, columnIndex) => {
           if (!kana) return <span key={`${rowIndex}-${columnIndex}`} className="kana-cell kana-cell--blank" aria-hidden="true" />
           const count = index.get(kana)?.length ?? 0
+          const practiced = practicedKana.has(kana)
           return (
             <button
               key={kana}
               type="button"
-              className="kana-cell"
+              className={`kana-cell ${practiced ? 'kana-cell--practiced' : ''}`}
               disabled={count === 0}
-              aria-label={`${kana}、${count}この えき`}
+              aria-label={`${kana}、${count}この えき${practiced ? '、れんしゅうした' : ''}`}
               onClick={() => onChoose(kana)}
             >
-              <strong>{kana}</strong><small>{count}</small>
+              <strong>{kana}</strong><small>{count}</small>{practiced && <span className="kana-practiced-mark" aria-hidden="true">✓</span>}
             </button>
           )
         }))}

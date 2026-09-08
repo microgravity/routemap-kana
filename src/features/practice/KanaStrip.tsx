@@ -5,11 +5,12 @@ interface Props {
   reading: string
   activeIndex?: number
   practicedPositions?: number[]
+  freeWrittenPositions?: number[]
   onChoose?: (index: number) => void
   onSpeak: (text: string) => void
 }
 
-export function KanaStrip({ reading, activeIndex, practicedPositions = [], onChoose, onSpeak }: Props) {
+export function KanaStrip({ reading, activeIndex, practicedPositions = [], freeWrittenPositions = [], onChoose, onSpeak }: Props) {
   const kana = splitKana(reading)
   const [highlighted, setHighlighted] = useState<number | null>(null)
   const activePointer = useRef<number | null>(null)
@@ -60,10 +61,10 @@ export function KanaStrip({ reading, activeIndex, practicedPositions = [], onCho
           data-kana-index={index}
           className={`kana-chip ${activeIndex === index ? 'kana-chip--active' : ''} ${highlighted === index ? 'kana-chip--speaking' : ''}`}
           onClick={() => onChoose?.(index)}
-          aria-label={`${index + 1}もじめ、${speechForKana(character)}${practicedPositions.includes(index) ? '、れんしゅうした' : ''}`}
+          aria-label={`${index + 1}もじめ、${speechForKana(character)}${freeWrittenPositions.includes(index) ? '、おてほんなしで かいた' : practicedPositions.includes(index) ? '、れんしゅうした' : ''}`}
         >
           {character}
-          {practicedPositions.includes(index) && <span className="kana-check" aria-hidden="true">●</span>}
+          {practicedPositions.includes(index) && <span className={`kana-check ${freeWrittenPositions.includes(index) ? 'kana-check--free-written' : ''}`} aria-hidden="true">{freeWrittenPositions.includes(index) ? '★' : '●'}</span>}
         </button>
       ))}
     </div>

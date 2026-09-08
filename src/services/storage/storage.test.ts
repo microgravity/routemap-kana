@@ -16,6 +16,7 @@ describe('バックアップ検証', () => {
     state.progress.unknown = {
       readingSnapshot: 'えき',
       practicedPositions: [],
+      freeWrittenPositions: [],
       currentPosition: 0,
       added: false,
     }
@@ -27,6 +28,7 @@ describe('バックアップ検証', () => {
     state.progress['tokyu-ty05'] = {
       readingSnapshot: 'がくげいだいがく',
       practicedPositions: [0, 3],
+      freeWrittenPositions: [0],
       currentPosition: 3,
       added: true,
       addedAt: '2026-09-06T00:00:00.000Z',
@@ -38,5 +40,16 @@ describe('バックアップ検証', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
     delete oldState.settings.traceStrictness
     expect(parseBackup(JSON.stringify(oldState)).settings.traceStrictness).toBe('standard')
+  })
+
+  it('お手本なし進捗がない旧データを空の上位進捗として読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    oldState.progress['tokyu-ty05'] = {
+      readingSnapshot: 'がくげいだいがく',
+      practicedPositions: [0, 3],
+      currentPosition: 3,
+      added: true,
+    }
+    expect(parseBackup(JSON.stringify(oldState)).progress['tokyu-ty05'].freeWrittenPositions).toEqual([])
   })
 })

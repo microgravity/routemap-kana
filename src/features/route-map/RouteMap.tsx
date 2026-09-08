@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { stationCodeForRoute } from '../../data/stations'
 import type { Route } from '../../domain/types'
-import { isStationPracticed } from '../../domain/progress'
+import { isStationFreeWritten, isStationPracticed } from '../../domain/progress'
 import { useAppState } from '../../app/AppState'
 
 interface Props {
@@ -66,14 +66,15 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
             const progress = state.progress[id]
             const added = Boolean(progress?.added)
             const practiced = isStationPracticed(progress, station.reading)
+            const freeWritten = isStationFreeWritten(progress, station.reading)
             const hidden = mode === 'mine' && !added
             return (
               <g
                 key={id}
-                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--complete' : ''} ${hidden ? 'station-node--hidden' : ''}`}
+                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--complete' : ''} ${freeWritten ? 'station-node--free-written' : ''} ${hidden ? 'station-node--hidden' : ''}`}
                 role={hidden ? undefined : 'button'}
                 tabIndex={hidden ? -1 : 0}
-                aria-label={`${station.displayName}、${station.reading}${practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
+                aria-label={`${station.displayName}、${station.reading}${freeWritten ? '、おてほんなしで ぜんぶかいた' : practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
                 onClick={() => { if (!hidden) onSelect(id) }}
                 onKeyDown={(event) => {
                   if (!hidden && (event.key === 'Enter' || event.key === ' ')) {
@@ -85,7 +86,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
                 <circle cx={x} cy={y} r="38" className="station-hit" />
                 <circle cx={x} cy={y} r={added ? 23 : 18} stroke={route.color} className="station-dot" />
                 {added && <circle cx={x} cy={y} r="8" fill={route.color} className="station-core" />}
-                {practiced && <text x={x + 26} y={y - 23} className="practice-badge">★</text>}
+                {practiced && <text x={x + 26} y={y - 23} className={`practice-badge ${freeWritten ? 'practice-badge--free-written' : ''}`}>{freeWritten ? '★★' : '★'}</text>}
                 {!hidden && (
                   <>
                     <text x={x} y={y + 67} className="station-label">{station.displayName}</text>

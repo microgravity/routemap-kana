@@ -17,6 +17,15 @@ export interface TraceEvaluation {
 
 export type TraceIssue = 'too-short' | 'off-path' | 'not-covered' | 'stroke-count' | 'start-position' | 'stroke-order'
 
+export interface FreeWritingEvaluation {
+  passed: boolean
+  issues: FreeWritingIssue[]
+  inBoundsRatio: number
+  coverageRatio: number
+}
+
+export type FreeWritingIssue = 'too-short' | 'shape-mismatch' | 'not-covered'
+
 interface TraceProfile {
   pathTolerance: number
   minInBounds: number
@@ -34,6 +43,13 @@ const INPUT_SAMPLE_SPACING = 10
 const GUIDE_SAMPLE_SPACING = 10
 const MIN_STROKE_LENGTH = 18
 const START_TOLERANCE = 82
+const FREE_WRITING_TOLERANCE = 50
+const FREE_WRITING_MIN_IN_BOUNDS = .56
+const FREE_WRITING_MIN_COVERAGE = .48
+const FREE_WRITING_MIN_LENGTH = 70
+const FREE_WRITING_MIN_EXTENT = 48
+const NORMALIZED_SHAPE_SIZE = 420
+const NORMALIZED_SHAPE_CENTER = 300
 
 export function polylineLength(points: Point[]): number {
   let length = 0
@@ -72,6 +88,22 @@ export function resamplePolyline(points: Point[], spacing = INPUT_SAMPLE_SPACING
 
 function distanceToPoints(point: Point, candidates: Point[]): number {
   return candidates.reduce((closest, candidate) => Math.min(closest, pointDistance(point, candidate)), Number.POSITIVE_INFINITY)
+}
+
+function normalizeShape(points: Point[]): Point[] {
+  const minX = Math.min(...points.map((point) => point.x))
+  const maxX = Math.max(...points.map((point) => point.x))
+  const minY = Math.min(...points.map((point) => point.y))
+  const maxY = Math.max(...points.map((point) => point.y))
+  const width = Math.max(1, maxX - minX)
+  const height = Math.max(1, maxY - minY)
+  const scale = NORMALIZED_SHAPE_SIZE / Math.max(width, height)
+  const centerX = (minX + maxX) / 2
+  const centerY = (minY + maxY) / 2
+  return points.map((point) => ({
+    x: NORMALIZED_SHAPE_CENTER + (point.x - centerX) * scale,
+    y: NORMALIZED_SHAPE_CENTER + (point.y - centerY) * scale,
+  }))
 }
 
 function closestPointIndex(point: Point, candidates: Point[]): number {
@@ -146,6 +178,44 @@ export function evaluateTrace(
   const passed = shapeMatches && (!profile.checkTechnique || techniqueMatches)
 
   return { passed, issues, startRatio, inBoundsRatio, coverageRatio, directionRatio, strokeCountMatches }
+}
+
+export function evaluateFreeWriting(
+  inputStrokes: Point[][],
+  guideStrokes: TraceGuideStroke[],
+): FreeWritingEvaluation {
+  const meaningfulInput = inputStrokes.filter((stroke) => polylineLength(stroke) >= MIN_STROKE_LENGTH)
+  const totalLength = meaningfulInput.reduce((sum, stroke) => sum + polylineLength(stroke), 0)
+  const rawInputPoints = meaningfulInput.flat()
+  const inputWidth = rawInputPoints.length > 0
+    ? Math.max(...rawInputPoints.map((point) => point.x)) - Math.min(...rawInputPoints.map((point) => point.x))
+    : 0
+  const inputHeight = rawInputPoints.length > 0
+    ? Math.max(...rawInputPoints.map((point) => point.y)) - Math.min(...rawInputPoints.map((point) => point.y))
+    : 0
+  const guidePoints = guideStrokes.flatMap((stroke) => stroke.segments
+    .filter((segment) => segment.length >= 2)
+    .flatMap((segment) => resamplePolyline(segment, GUIDE_SAMPLE_SPACING)))
+
+  if (totalLength < FREE_WRITING_MIN_LENGTH || Math.max(inputWidth, inputHeight) < FREE_WRITING_MIN_EXTENT || guidePoints.length === 0) {
+    return { passed: false, issues: ['too-short'], inBoundsRatio: 0, coverageRatio: 0 }
+  }
+
+  const inputPoints = normalizeShape(meaningfulInput.flatMap((stroke) => resamplePolyline(stroke)))
+  const normalizedGuide = normalizeShape(guidePoints)
+  const inBoundsRatio = inputPoints.filter((point) => distanceToPoints(point, normalizedGuide) <= FREE_WRITING_TOLERANCE).length / inputPoints.length
+  const coverageRatio = normalizedGuide.filter((point) => distanceToPoints(point, inputPoints) <= FREE_WRITING_TOLERANCE).length / normalizedGuide.length
+  const issues: FreeWritingIssue[] = []
+  if (inBoundsRatio < FREE_WRITING_MIN_IN_BOUNDS) issues.push('shape-mismatch')
+  if (coverageRatio < FREE_WRITING_MIN_COVERAGE) issues.push('not-covered')
+  return { passed: issues.length === 0, issues, inBoundsRatio, coverageRatio }
+}
+
+export function freeWritingFeedback(evaluation: FreeWritingEvaluation): string {
+  if (evaluation.issues.includes('too-short')) return 'もうすこし おおきく かいてみよう'
+  if (evaluation.issues.includes('not-covered')) return 'もじの かたちが すこし たりないみたい'
+  if (evaluation.issues.includes('shape-mismatch')) return 'もじの かたちが すこし ちがうみたい'
+  return ''
 }
 
 export function traceFeedback(evaluation: TraceEvaluation): string {
