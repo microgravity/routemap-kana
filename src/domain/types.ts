@@ -1,4 +1,5 @@
 export type Handedness = 'left' | 'right'
+export type TraceStrictness = 'gentle' | 'standard' | 'careful'
 
 export interface Station {
   id: string
@@ -42,6 +43,7 @@ export interface PracticeProgress {
 
 export interface AppSettings {
   handedness: Handedness
+  traceStrictness: TraceStrictness
   speechRate: number
   volume: number
   muted: boolean

@@ -13,6 +13,7 @@ export const MAX_IMPORT_BYTES = 512 * 1024
 
 export const defaultSettings: AppSettings = {
   handedness: 'left',
+  traceStrictness: 'standard',
   speechRate: 0.82,
   volume: 1,
   muted: false,
@@ -43,8 +44,15 @@ function validateSettings(value: unknown): AppSettings | null {
   if (typeof value.speechRate !== 'number' || value.speechRate < 0.5 || value.speechRate > 1.2) return null
   if (typeof value.volume !== 'number' || value.volume < 0 || value.volume > 1) return null
   if (typeof value.muted !== 'boolean' || typeof value.reduceMotion !== 'boolean') return null
+  const traceStrictness = value.traceStrictness === undefined
+    ? 'standard'
+    : value.traceStrictness === 'gentle' || value.traceStrictness === 'standard' || value.traceStrictness === 'careful'
+      ? value.traceStrictness
+      : null
+  if (!traceStrictness) return null
   return {
     handedness: value.handedness,
+    traceStrictness,
     speechRate: value.speechRate,
     volume: value.volume,
     muted: value.muted,

@@ -33,4 +33,10 @@ describe('バックアップ検証', () => {
     }
     expect(parseBackup(serializeBackup(state)).progress['tokyu-ty05']).toEqual(state.progress['tokyu-ty05'])
   })
+
+  it('判定設定がない旧データを「ふつう」で読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    delete oldState.settings.traceStrictness
+    expect(parseBackup(JSON.stringify(oldState)).settings.traceStrictness).toBe('standard')
+  })
 })

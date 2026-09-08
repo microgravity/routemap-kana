@@ -1,5 +1,5 @@
 import type { Point } from './input'
-import { evaluateTrace, type TraceGuideStroke } from './traceEvaluation'
+import { evaluateTrace, traceAdvisory, traceFeedback, type TraceGuideStroke } from './traceEvaluation'
 
 const line = (from: Point, to: Point, steps = 12): Point[] => Array.from({ length: steps }, (_, index) => ({
   x: from.x + ((to.x - from.x) * index) / (steps - 1),
@@ -20,24 +20,40 @@ describe('なぞり補助判定', () => {
     expect(evaluateTrace(input, guide).passed).toBe(true)
   })
 
-  it('開始位置が途中の線を成功にしない', () => {
+  it('ふつうでは開始位置が途中でも形が重なれば許容する', () => {
     const input = [line({ x: 240, y: 120 }, { x: 420, y: 120 }), line({ x: 260, y: 180 }, { x: 260, y: 500 })]
-    expect(evaluateTrace(input, guide).passed).toBe(false)
+    const result = evaluateTrace(input, guide, 'standard')
+    expect(result.passed).toBe(true)
+    expect(result.issues).toContain('start-position')
+    expect(evaluateTrace(input, guide, 'careful').passed).toBe(false)
   })
 
-  it('逆向きの線を成功にしない', () => {
+  it('ふつうでは逆向きを許容し、分かりやすい助言を返す', () => {
     const input = [line({ x: 420, y: 120 }, { x: 100, y: 120 }), line({ x: 260, y: 500 }, { x: 260, y: 180 })]
-    expect(evaluateTrace(input, guide).passed).toBe(false)
+    const result = evaluateTrace(input, guide, 'standard')
+    expect(result.passed).toBe(true)
+    expect(result.issues).toContain('stroke-order')
+    expect(traceAdvisory(result)).toContain('だいじょうぶ')
   })
 
-  it('画順を入れ替えた線を成功にしない', () => {
+  it('ふつうでは画順違いを許容する', () => {
     const input = [line({ x: 260, y: 180 }, { x: 260, y: 500 }), line({ x: 100, y: 120 }, { x: 420, y: 120 })]
-    expect(evaluateTrace(input, guide).passed).toBe(false)
+    expect(evaluateTrace(input, guide, 'standard').passed).toBe(true)
+    expect(evaluateTrace(input, guide, 'careful').passed).toBe(false)
+  })
+
+  it('3段階で線のずれに対する許容範囲を変える', () => {
+    const input = [line({ x: 100, y: 222 }, { x: 420, y: 222 }), line({ x: 362, y: 180 }, { x: 362, y: 500 })]
+    expect(evaluateTrace(input, guide, 'gentle').passed).toBe(true)
+    expect(evaluateTrace(input, guide, 'standard').passed).toBe(false)
+    expect(evaluateTrace(input, guide, 'careful').passed).toBe(false)
   })
 
   it('お手本から大きく外れた線を成功にしない', () => {
     const input = [line({ x: 100, y: 360 }, { x: 420, y: 360 }), line({ x: 500, y: 180 }, { x: 500, y: 500 })]
-    expect(evaluateTrace(input, guide).passed).toBe(false)
+    const result = evaluateTrace(input, guide, 'gentle')
+    expect(result.passed).toBe(false)
+    expect(traceFeedback(result)).toContain('せんから はなれている')
   })
 
   it('短すぎる線を成功にしない', () => {

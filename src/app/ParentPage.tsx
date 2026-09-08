@@ -145,6 +145,23 @@ export function ParentPage() {
               <label className="choice"><input type="radio" name="hand" checked={state.settings.handedness === 'left'} onChange={() => updateSettings({ handedness: 'left' })} /> 左利き</label>
               <label className="choice"><input type="radio" name="hand" checked={state.settings.handedness === 'right'} onChange={() => updateSettings({ handedness: 'right' })} /> 右利き</label>
             </fieldset>
+            <fieldset>
+              <legend>なぞり判定</legend>
+              <div className="strictness-choices">
+                <label className="choice choice--setting">
+                  <input type="radio" name="trace-strictness" checked={state.settings.traceStrictness === 'gentle'} onChange={() => updateSettings({ traceStrictness: 'gentle' })} />
+                  <span><strong>やさしい</strong><small>だいたい重なればOK</small></span>
+                </label>
+                <label className="choice choice--setting">
+                  <input type="radio" name="trace-strictness" checked={state.settings.traceStrictness === 'standard'} onChange={() => updateSettings({ traceStrictness: 'standard' })} />
+                  <span><strong>ふつう</strong><small>ずれや書き順違いも許容</small></span>
+                </label>
+                <label className="choice choice--setting">
+                  <input type="radio" name="trace-strictness" checked={state.settings.traceStrictness === 'careful'} onChange={() => updateSettings({ traceStrictness: 'careful' })} />
+                  <span><strong>しっかり</strong><small>始点と書き順も確認</small></span>
+                </label>
+              </div>
+            </fieldset>
             <label className="range-field">
               <span>声の速さ <output>{state.settings.speechRate.toFixed(2)}</output></span>
               <input type="range" min="0.5" max="1.2" step="0.05" value={state.settings.speechRate} onChange={(event) => updateSettings({ speechRate: Number(event.target.value) })} />

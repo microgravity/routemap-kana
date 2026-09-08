@@ -1,4 +1,5 @@
 import { pointDistance, type Point } from './input'
+import type { TraceStrictness } from './types'
 
 export interface TraceGuideStroke {
   segments: Point[][]
@@ -6,6 +7,7 @@ export interface TraceGuideStroke {
 
 export interface TraceEvaluation {
   passed: boolean
+  issues: TraceIssue[]
   startRatio: number
   inBoundsRatio: number
   coverageRatio: number
@@ -13,11 +15,25 @@ export interface TraceEvaluation {
   strokeCountMatches: boolean
 }
 
+export type TraceIssue = 'too-short' | 'off-path' | 'not-covered' | 'stroke-count' | 'start-position' | 'stroke-order'
+
+interface TraceProfile {
+  pathTolerance: number
+  minInBounds: number
+  minCoverage: number
+  checkTechnique: boolean
+}
+
+const PROFILES: Record<TraceStrictness, TraceProfile> = {
+  gentle: { pathTolerance: 112, minInBounds: .42, minCoverage: .28, checkTechnique: false },
+  standard: { pathTolerance: 92, minInBounds: .54, minCoverage: .38, checkTechnique: false },
+  careful: { pathTolerance: 70, minInBounds: .68, minCoverage: .52, checkTechnique: true },
+}
+
 const INPUT_SAMPLE_SPACING = 10
 const GUIDE_SAMPLE_SPACING = 10
 const MIN_STROKE_LENGTH = 18
 const START_TOLERANCE = 82
-const PATH_TOLERANCE = 70
 
 export function polylineLength(points: Point[]): number {
   let length = 0
@@ -85,43 +101,66 @@ function directionScore(input: Point[], guide: TraceGuideStroke): number {
   return Math.min(monotonicRatio, Math.max(0, advance / .45))
 }
 
-export function evaluateTrace(inputStrokes: Point[][], guideStrokes: TraceGuideStroke[]): TraceEvaluation {
+export function evaluateTrace(
+  inputStrokes: Point[][],
+  guideStrokes: TraceGuideStroke[],
+  strictness: TraceStrictness = 'standard',
+): TraceEvaluation {
+  const profile = PROFILES[strictness]
   const input = inputStrokes.filter((stroke) => polylineLength(stroke) >= MIN_STROKE_LENGTH).map((stroke) => resamplePolyline(stroke))
   const guide = guideStrokes
     .map((stroke) => ({ segments: stroke.segments.filter((segment) => segment.length >= 2) }))
     .filter((stroke) => stroke.segments.length > 0)
   const strokeCountMatches = input.length === guide.length && guide.length > 0
 
-  if (!strokeCountMatches) {
-    return { passed: false, startRatio: 0, inBoundsRatio: 0, coverageRatio: 0, directionRatio: 0, strokeCountMatches }
+  if (input.length === 0 || guide.length === 0) {
+    return { passed: false, issues: ['too-short'], startRatio: 0, inBoundsRatio: 0, coverageRatio: 0, directionRatio: 0, strokeCountMatches }
   }
 
+  const allInputPoints = input.flat()
+  const allGuidePoints = guide.flatMap((stroke) => stroke.segments.flatMap((segment) => resamplePolyline(segment, GUIDE_SAMPLE_SPACING)))
+  const inBoundsRatio = allInputPoints.filter((point) => distanceToPoints(point, allGuidePoints) <= profile.pathTolerance).length / allInputPoints.length
+  const coverageRatio = allGuidePoints.filter((point) => distanceToPoints(point, allInputPoints) <= profile.pathTolerance).length / allGuidePoints.length
+
   let starts = 0
-  let inputSamples = 0
-  let inputSamplesInBounds = 0
-  let guideSamples = 0
-  let guideSamplesCovered = 0
   let directionTotal = 0
 
-  guide.forEach((guideStroke, index) => {
+  guide.slice(0, input.length).forEach((guideStroke, index) => {
     const userPoints = input[index]
     const segmentSamples = guideStroke.segments.map((segment) => resamplePolyline(segment, GUIDE_SAMPLE_SPACING))
-    const allGuidePoints = segmentSamples.flat()
     const guideStart = segmentSamples[0][0]
     if (pointDistance(userPoints[0], guideStart) <= START_TOLERANCE) starts += 1
-
-    inputSamples += userPoints.length
-    inputSamplesInBounds += userPoints.filter((point) => distanceToPoints(point, allGuidePoints) <= PATH_TOLERANCE).length
-    guideSamples += allGuidePoints.length
-    guideSamplesCovered += allGuidePoints.filter((point) => distanceToPoints(point, userPoints) <= PATH_TOLERANCE).length
     directionTotal += directionScore(userPoints, guideStroke)
   })
 
   const startRatio = starts / guide.length
-  const inBoundsRatio = inputSamplesInBounds / Math.max(1, inputSamples)
-  const coverageRatio = guideSamplesCovered / Math.max(1, guideSamples)
   const directionRatio = directionTotal / guide.length
-  const passed = startRatio === 1 && inBoundsRatio >= .68 && coverageRatio >= .52 && directionRatio >= .58
+  const issues: TraceIssue[] = []
+  if (inBoundsRatio < profile.minInBounds) issues.push('off-path')
+  if (coverageRatio < profile.minCoverage) issues.push('not-covered')
+  if (!strokeCountMatches) issues.push('stroke-count')
+  if (startRatio < 1) issues.push('start-position')
+  if (directionRatio < .58) issues.push('stroke-order')
+  const shapeMatches = !issues.includes('off-path') && !issues.includes('not-covered')
+  const techniqueMatches = strokeCountMatches && startRatio === 1 && directionRatio >= .58
+  const passed = shapeMatches && (!profile.checkTechnique || techniqueMatches)
 
-  return { passed, startRatio, inBoundsRatio, coverageRatio, directionRatio, strokeCountMatches }
+  return { passed, issues, startRatio, inBoundsRatio, coverageRatio, directionRatio, strokeCountMatches }
+}
+
+export function traceFeedback(evaluation: TraceEvaluation): string {
+  if (evaluation.issues.includes('too-short')) return 'もうすこし ながく かいてみよう'
+  if (evaluation.issues.includes('off-path')) return 'おてほんの せんから はなれている ところが あるよ'
+  if (evaluation.issues.includes('not-covered')) return 'まだ なぞれていない ところが あるよ'
+  if (evaluation.issues.includes('stroke-count')) return 'かく かずが おてほんと ちがうみたい'
+  if (evaluation.issues.includes('stroke-order')) return 'かきじゅんが おてほんと ちがうみたい'
+  if (evaluation.issues.includes('start-position')) return 'まるの ところから かきはじめてみよう'
+  return ''
+}
+
+export function traceAdvisory(evaluation: TraceEvaluation): string {
+  if (evaluation.issues.includes('stroke-count') || evaluation.issues.includes('stroke-order') || evaluation.issues.includes('start-position')) {
+    return 'かきじゅんが ちがっても だいじょうぶ！'
+  }
+  return ''
 }
