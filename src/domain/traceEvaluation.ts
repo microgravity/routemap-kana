@@ -22,9 +22,10 @@ export interface FreeWritingEvaluation {
   issues: FreeWritingIssue[]
   inBoundsRatio: number
   coverageRatio: number
+  directionSimilarity: number
 }
 
-export type FreeWritingIssue = 'too-short' | 'shape-mismatch' | 'not-covered'
+export type FreeWritingIssue = 'too-short' | 'shape-mismatch' | 'not-covered' | 'direction-mismatch'
 
 interface TraceProfile {
   pathTolerance: number
@@ -43,9 +44,10 @@ const INPUT_SAMPLE_SPACING = 10
 const GUIDE_SAMPLE_SPACING = 10
 const MIN_STROKE_LENGTH = 18
 const START_TOLERANCE = 82
-const FREE_WRITING_TOLERANCE = 50
-const FREE_WRITING_MIN_IN_BOUNDS = .56
-const FREE_WRITING_MIN_COVERAGE = .48
+const FREE_WRITING_TOLERANCE = 68
+const FREE_WRITING_MIN_IN_BOUNDS = .46
+const FREE_WRITING_MIN_COVERAGE = .38
+const FREE_WRITING_MIN_DIRECTION_SIMILARITY = .28
 const FREE_WRITING_MIN_LENGTH = 70
 const FREE_WRITING_MIN_EXTENT = 48
 const NORMALIZED_SHAPE_SIZE = 420
@@ -90,20 +92,46 @@ function distanceToPoints(point: Point, candidates: Point[]): number {
   return candidates.reduce((closest, candidate) => Math.min(closest, pointDistance(point, candidate)), Number.POSITIVE_INFINITY)
 }
 
-function normalizeShape(points: Point[]): Point[] {
+function shapeNormalizer(points: Point[]): (point: Point) => Point {
   const minX = Math.min(...points.map((point) => point.x))
   const maxX = Math.max(...points.map((point) => point.x))
   const minY = Math.min(...points.map((point) => point.y))
   const maxY = Math.max(...points.map((point) => point.y))
   const width = Math.max(1, maxX - minX)
   const height = Math.max(1, maxY - minY)
-  const scale = NORMALIZED_SHAPE_SIZE / Math.max(width, height)
+  const scaleX = NORMALIZED_SHAPE_SIZE / width
+  const scaleY = NORMALIZED_SHAPE_SIZE / height
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
-  return points.map((point) => ({
-    x: NORMALIZED_SHAPE_CENTER + (point.x - centerX) * scale,
-    y: NORMALIZED_SHAPE_CENTER + (point.y - centerY) * scale,
-  }))
+  return (point) => ({
+    x: NORMALIZED_SHAPE_CENTER + (point.x - centerX) * scaleX,
+    y: NORMALIZED_SHAPE_CENTER + (point.y - centerY) * scaleY,
+  })
+}
+
+function directionHistogram(strokes: Point[][]): number[] {
+  const bins = Array.from({ length: 8 }, () => 0)
+  let total = 0
+  for (const stroke of strokes) {
+    for (let index = 1; index < stroke.length; index += 1) {
+      const dx = stroke[index].x - stroke[index - 1].x
+      const dy = stroke[index].y - stroke[index - 1].y
+      const length = Math.hypot(dx, dy)
+      if (length < 1) continue
+      const angle = ((Math.atan2(dy, dx) % Math.PI) + Math.PI) % Math.PI
+      const binPosition = (angle / Math.PI) * bins.length
+      const lower = Math.floor(binPosition) % bins.length
+      const fraction = binPosition - Math.floor(binPosition)
+      bins[lower] += length * (1 - fraction)
+      bins[(lower + 1) % bins.length] += length * fraction
+      total += length
+    }
+  }
+  return total > 0 ? bins.map((value) => value / total) : bins
+}
+
+function histogramOverlap(first: number[], second: number[]): number {
+  return first.reduce((sum, value, index) => sum + Math.min(value, second[index] ?? 0), 0)
 }
 
 function closestPointIndex(point: Point, candidates: Point[]): number {
@@ -193,27 +221,36 @@ export function evaluateFreeWriting(
   const inputHeight = rawInputPoints.length > 0
     ? Math.max(...rawInputPoints.map((point) => point.y)) - Math.min(...rawInputPoints.map((point) => point.y))
     : 0
-  const guidePoints = guideStrokes.flatMap((stroke) => stroke.segments
+  const inputSegments = meaningfulInput.map((stroke) => resamplePolyline(stroke))
+  const guideSegments = guideStrokes.flatMap((stroke) => stroke.segments
     .filter((segment) => segment.length >= 2)
-    .flatMap((segment) => resamplePolyline(segment, GUIDE_SAMPLE_SPACING)))
+    .map((segment) => resamplePolyline(segment, GUIDE_SAMPLE_SPACING)))
+  const guidePoints = guideSegments.flat()
 
   if (totalLength < FREE_WRITING_MIN_LENGTH || Math.max(inputWidth, inputHeight) < FREE_WRITING_MIN_EXTENT || guidePoints.length === 0) {
-    return { passed: false, issues: ['too-short'], inBoundsRatio: 0, coverageRatio: 0 }
+    return { passed: false, issues: ['too-short'], inBoundsRatio: 0, coverageRatio: 0, directionSimilarity: 0 }
   }
 
-  const inputPoints = normalizeShape(meaningfulInput.flatMap((stroke) => resamplePolyline(stroke)))
-  const normalizedGuide = normalizeShape(guidePoints)
+  const normalizeInput = shapeNormalizer(inputSegments.flat())
+  const normalizeGuide = shapeNormalizer(guidePoints)
+  const normalizedInputSegments = inputSegments.map((stroke) => stroke.map(normalizeInput))
+  const normalizedGuideSegments = guideSegments.map((stroke) => stroke.map(normalizeGuide))
+  const inputPoints = normalizedInputSegments.flat()
+  const normalizedGuide = normalizedGuideSegments.flat()
   const inBoundsRatio = inputPoints.filter((point) => distanceToPoints(point, normalizedGuide) <= FREE_WRITING_TOLERANCE).length / inputPoints.length
   const coverageRatio = normalizedGuide.filter((point) => distanceToPoints(point, inputPoints) <= FREE_WRITING_TOLERANCE).length / normalizedGuide.length
+  const directionSimilarity = histogramOverlap(directionHistogram(normalizedInputSegments), directionHistogram(normalizedGuideSegments))
   const issues: FreeWritingIssue[] = []
   if (inBoundsRatio < FREE_WRITING_MIN_IN_BOUNDS) issues.push('shape-mismatch')
   if (coverageRatio < FREE_WRITING_MIN_COVERAGE) issues.push('not-covered')
-  return { passed: issues.length === 0, issues, inBoundsRatio, coverageRatio }
+  if (directionSimilarity < FREE_WRITING_MIN_DIRECTION_SIMILARITY) issues.push('direction-mismatch')
+  return { passed: issues.length === 0, issues, inBoundsRatio, coverageRatio, directionSimilarity }
 }
 
 export function freeWritingFeedback(evaluation: FreeWritingEvaluation): string {
   if (evaluation.issues.includes('too-short')) return 'もうすこし おおきく かいてみよう'
   if (evaluation.issues.includes('not-covered')) return 'もじの かたちが すこし たりないみたい'
+  if (evaluation.issues.includes('direction-mismatch')) return 'もじの かたちが すこし ちがうみたい'
   if (evaluation.issues.includes('shape-mismatch')) return 'もじの かたちが すこし ちがうみたい'
   return ''
 }

@@ -71,6 +71,14 @@ describe('お手本なしの字形判定', () => {
     expect(evaluateFreeWriting(input, guide).passed).toBe(true)
   })
 
+  it('書く場所と縦横の比率が大きく違っても字形が同じなら成功にする', () => {
+    const input = [
+      line({ x: 540, y: 470 }, { x: 60, y: 470 }),
+      line({ x: 300, y: 490 }, { x: 300, y: 570 }),
+    ]
+    expect(evaluateFreeWriting(input, guide).passed).toBe(true)
+  })
+
   it('書き順と向きは判定に使わない', () => {
     const input = [
       line({ x: 125, y: 360 }, { x: 125, y: 520 }),
@@ -93,5 +101,10 @@ describe('お手本なしの字形判定', () => {
     const result = evaluateFreeWriting([line({ x: 10, y: 10 }, { x: 30, y: 10 }, 3)], guide)
     expect(result.passed).toBe(false)
     expect(result.issues).toContain('too-short')
+  })
+
+  it('長くても一本線だけなら複数部分のお手本をクリアにしない', () => {
+    const result = evaluateFreeWriting([line({ x: 40, y: 300 }, { x: 560, y: 300 })], guide)
+    expect(result.passed).toBe(false)
   })
 })
