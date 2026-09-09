@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { builtInStations, routes } from '../data/stations'
 import { normalizeReading } from '../domain/kana'
+import { appendMilestoneHistory, milestoneEventsForPracticeResult, recoverRouteAchievementHistory } from '../domain/milestoneHistory'
 import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import type { AppSettings, AppState, CustomStation, PersistedState, Station, StationOverride } from '../domain/types'
-import { grantEarnedMilestones, grantMetroRouteChoice, migrateUnlockMilestones, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
+import { grantEarnedMilestones, grantMetroRouteChoice, migrateUnlockMilestones, routeCheckpointMilestoneById, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
 interface AppStateValue {
@@ -25,6 +26,21 @@ interface AppStateValue {
 
 const Context = createContext<AppStateValue | null>(null)
 
+function routeStationIdsForState(routeId: string, state: AppState): string[] {
+  const route = routes.find((item) => item.id === routeId)
+  if (!route) return []
+  const ordered = [...route.orderedStationIds]
+  for (const station of state.customStations.filter((item) => item.routeId === routeId)) {
+    if (station.insertAfterStationId === null) {
+      ordered.unshift(station.id)
+      continue
+    }
+    const index = ordered.indexOf(station.insertAfterStationId)
+    ordered.splice(index >= 0 ? index + 1 : ordered.length, 0, station.id)
+  }
+  return ordered
+}
+
 function withEarnedMilestones(state: AppState): AppState {
   const stations = builtInStations.map((station) => ({ ...station, ...state.stationOverrides[station.id] }))
   const stationById = new Map(stations.map((station) => [station.id, station]))
@@ -37,10 +53,29 @@ function withEarnedMilestones(state: AppState): AppState {
     : { ...state, unlockSystemVersion: UNLOCK_SYSTEM_VERSION, unlockedMilestones }
 }
 
+function withRecoveredMilestoneHistory(state: AppState): AppState {
+  const stations = [
+    ...builtInStations.map((station) => ({ ...station, ...state.stationOverrides[station.id] })),
+    ...state.customStations,
+  ]
+  const stationById = new Map(stations.map((station) => [station.id, station]))
+  const milestoneHistory = recoverRouteAchievementHistory(
+    state.milestoneHistory,
+    routes.map((route) => ({ routeId: route.id, stationIds: routeStationIdsForState(route.id, state) })),
+    stationById,
+    state.progress,
+  )
+  return milestoneHistory.length === state.milestoneHistory.length ? state : { ...state, milestoneHistory }
+}
+
+function prepareLoadedState(state: AppState): AppState {
+  return withRecoveredMilestoneHistory(withEarnedMilestones(state))
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const loaded = useMemo(() => {
     const result = loadState()
-    return { ...result, state: withEarnedMilestones(result.state) }
+    return { ...result, state: prepareLoadedState(result.state) }
   }, [])
   const [state, setState] = useState<AppState>(loaded.state)
   const [storageWarning, setStorageWarning] = useState<string | undefined>(loaded.warning)
@@ -61,18 +96,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [state])
 
   const routeStationIds = useCallback((routeId: string) => {
-    const route = routes.find((item) => item.id === routeId)
-    if (!route) return []
-    const ordered = [...route.orderedStationIds]
-    for (const station of state.customStations.filter((item) => item.routeId === routeId)) {
-      if (station.insertAfterStationId === null) {
-        ordered.unshift(station.id)
-        continue
-      }
-      const index = ordered.indexOf(station.insertAfterStationId)
-      ordered.splice(index >= 0 ? index + 1 : ordered.length, 0, station.id)
-    }
-    return ordered
+    return routeStationIdsForState(routeId, state)
   }, [state.customStations])
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
@@ -94,6 +118,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     )
     const unlockedAfter = grantEarnedMilestones(state.unlockedMilestones, { routes, stationById, progress: progressAfter })
     const unlockedMilestones = unlockedAfter.filter((id) => !state.unlockedMilestones.includes(id))
+    const milestoneEvents = milestoneEventsForPracticeResult(
+      routeAchievements,
+      unlockedMilestones,
+      routeCheckpointMilestoneById,
+      new Date().toISOString(),
+    )
     const result = {
       firstAdd: !previous.added,
       allComplete: isStationPracticed(completed, station.reading),
@@ -103,10 +133,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
     setState((current) => {
       const existing = reconcileProgress(current.progress[stationId], station.reading)
-      return withEarnedMilestones({
+      const earned = withEarnedMilestones({
         ...current,
         progress: { ...current.progress, [stationId]: update(existing, position) },
       })
+      return milestoneEvents.length === 0
+        ? earned
+        : { ...earned, milestoneHistory: appendMilestoneHistory(earned.milestoneHistory, milestoneEvents) }
     })
     return result
   }, [routeStationIds, state.progress, state.unlockedMilestones, stationById])
@@ -195,7 +228,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     saveStation,
     deleteCustomStation,
     resetBuiltInStation,
-    replaceState: (replacement) => setState(withEarnedMilestones(replacement)),
+    replaceState: (replacement) => setState(prepareLoadedState(replacement)),
     clearAll: () => setState(defaultState()),
   }
 

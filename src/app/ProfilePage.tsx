@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
-import { railwayOperators, routes } from '../data/stations'
+import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
+import { formatMilestoneDate } from '../domain/milestoneHistory'
 import { buildProfileSnapshot, type ProfileRouteRecord } from '../domain/profile'
+import type { MilestoneHistoryEvent } from '../domain/types'
 import { isOperatorUnlocked, isRouteUnlocked, metroUnlockStatus, routeCheckpointMilestones, unlockMilestoneById, unlockProgress } from '../domain/unlocks'
 import { useAppState } from './AppState'
 
@@ -32,6 +34,10 @@ export function ProfilePage() {
   const learnedKanaCount = profileKana.filter((kana) => profile.practicedKana.has(kana)).length
   const medals = profile.routes.filter((route) => route.unlocked && route.achievement !== 'none')
   const metroStatus = metroUnlockStatus(state.unlockedMilestones)
+  const history = useMemo(
+    () => [...state.milestoneHistory].reverse().sort((left, right) => Date.parse(right.achievedAt) - Date.parse(left.achievedAt)),
+    [state.milestoneHistory],
+  )
 
   return (
     <div className={`page-shell profile-page ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
@@ -148,9 +154,49 @@ export function ProfilePage() {
             ) : <span key={kana} className="profile-kana" aria-label={`${kana}、まだ`}>{kana}</span>)}
           </div>
         </section>
+
+        <section className="profile-section profile-history-section" aria-labelledby="history-title">
+          <div className="profile-section-heading">
+            <span className="profile-section-icon profile-section-icon--history"><MaterialIcon name="history" filled /></span>
+            <div><p className="eyebrow">スタンプラリーの おもいで</p><h2 id="history-title">できた！の きろく</h2></div>
+          </div>
+          {history.length > 0 ? (
+            <ol className="profile-history-list">
+              {history.map((event) => {
+                const route = routes.find((candidate) => candidate.id === event.routeId)
+                const operator = route ? railwayOperatorById.get(route.operatorId) : undefined
+                return (
+                  <li key={event.id} className={`profile-history-item profile-history-item--${event.kind}`} style={{ '--route-color': route?.color ?? '#8f8170' } as React.CSSProperties}>
+                    <span className="profile-history-stamp" aria-hidden="true"><MaterialIcon name={historyIcon(event)} filled /></span>
+                    <div>
+                      <time dateTime={event.achievedAt}>{formatMilestoneDate(event.achievedAt)}</time>
+                      <strong>{operator?.shortName ? `${operator.shortName}　` : ''}{route?.name ?? 'ろせん'}　{historyLabel(event)}</strong>
+                      {event.recovered && <small>これまでの きろくから ふっかつ</small>}
+                    </div>
+                    {route && <Link to={`/?route=${route.id}`} aria-label={`${route.name}の ろせんずを みる`}><MaterialIcon name="arrow_forward" /></Link>}
+                  </li>
+                )
+              })}
+            </ol>
+          ) : (
+            <div className="profile-empty"><MaterialIcon name="approval" /><strong>スタンプや メダルを もらうと、ここに のこるよ！</strong></div>
+          )}
+        </section>
       </main>
     </div>
   )
+}
+
+function historyIcon(event: MilestoneHistoryEvent): string {
+  if (event.kind === 'route-stamp') return 'approval'
+  if (event.kind === 'route-master') return 'stars'
+  return 'workspace_premium'
+}
+
+function historyLabel(event: MilestoneHistoryEvent): string {
+  if (event.kind === 'route-stamp') return `${Math.round((event.ratio ?? 0) * 100)}% くかんスタンプ！`
+  if (event.kind === 'route-master') return 'ろせんマスター！'
+  return 'クリア！'
 }
 
 function SummaryCard({ icon, value, label, note, tone }: { icon: string; value: number; label: string; note: string; tone: string }) {

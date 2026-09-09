@@ -62,6 +62,17 @@ export interface PracticeProgress {
   addedAt?: string
 }
 
+export type MilestoneHistoryKind = 'route-stamp' | 'route-complete' | 'route-master'
+
+export interface MilestoneHistoryEvent {
+  id: string
+  kind: MilestoneHistoryKind
+  routeId: string
+  achievedAt: string
+  ratio?: number
+  recovered?: boolean
+}
+
 export interface AppSettings {
   handedness: Handedness
   traceStrictness: TraceStrictness
@@ -79,6 +90,7 @@ export interface PersistedState {
   stationOverrides: Record<string, StationOverride>
   progress: Record<string, PracticeProgress>
   unlockedMilestones: string[]
+  milestoneHistory: MilestoneHistoryEvent[]
 }
 
 export type AppState = PersistedState

@@ -3,6 +3,7 @@ import { isHiraganaReading, normalizeReading, splitKana } from '../../domain/kan
 import type {
   AppSettings,
   CustomStation,
+  MilestoneHistoryEvent,
   PersistedState,
   PracticeProgress,
   StationOverride,
@@ -30,6 +31,7 @@ export function defaultState(): PersistedState {
     stationOverrides: {},
     progress: {},
     unlockedMilestones: [],
+    milestoneHistory: [],
   }
 }
 
@@ -123,6 +125,29 @@ function validateProgress(value: unknown, reading: string): PracticeProgress | n
   }
 }
 
+function validateMilestoneHistoryEvent(value: unknown): MilestoneHistoryEvent | null {
+  if (!isRecord(value)) return null
+  const id = asShortString(value.id, 180)
+  const routeId = asShortString(value.routeId, 120)
+  const achievedAt = asShortString(value.achievedAt, 40)
+  const kind = value.kind === 'route-stamp' || value.kind === 'route-complete' || value.kind === 'route-master'
+    ? value.kind
+    : null
+  if (!id || !routeId || !achievedAt || !kind || !Number.isFinite(Date.parse(achievedAt))) return null
+  const ratio = value.ratio
+  if (kind === 'route-stamp' && ratio !== 0.25 && ratio !== 0.5 && ratio !== 0.75 && ratio !== 1) return null
+  if (kind !== 'route-stamp' && ratio !== undefined) return null
+  if (value.recovered !== undefined && typeof value.recovered !== 'boolean') return null
+  return {
+    id,
+    kind,
+    routeId,
+    achievedAt,
+    ratio: ratio as number | undefined,
+    recovered: value.recovered as boolean | undefined,
+  }
+}
+
 export function parseBackup(text: string): PersistedState {
   if (new Blob([text]).size > MAX_IMPORT_BYTES) throw new Error('ファイルが おおきすぎます（512KBまで）')
   let raw: unknown
@@ -135,10 +160,12 @@ export function parseBackup(text: string): PersistedState {
   const settings = validateSettings(raw.settings)
   const unlockSystemVersion = raw.unlockSystemVersion === undefined ? 1 : raw.unlockSystemVersion
   const unlockedMilestonesRaw = raw.unlockedMilestones ?? []
+  const milestoneHistoryRaw = raw.milestoneHistory ?? []
   if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)
     || !Number.isInteger(unlockSystemVersion) || (unlockSystemVersion as number) < 1 || (unlockSystemVersion as number) > UNLOCK_SYSTEM_VERSION
     || !Array.isArray(unlockedMilestonesRaw)
-    || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)) {
+    || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)
+    || !Array.isArray(milestoneHistoryRaw) || milestoneHistoryRaw.length > 5000) {
     throw new Error('データの かたちが ただしくありません')
   }
 
@@ -177,6 +204,16 @@ export function parseBackup(text: string): PersistedState {
     progress[id] = item
   }
 
+  const milestoneHistory: MilestoneHistoryEvent[] = []
+  const milestoneEventIds = new Set<string>()
+  for (const value of milestoneHistoryRaw) {
+    const event = validateMilestoneHistoryEvent(value)
+    if (!event) throw new Error('できごとの データが ただしくありません')
+    if (milestoneEventIds.has(event.id)) continue
+    milestoneEventIds.add(event.id)
+    milestoneHistory.push(event)
+  }
+
   return {
     schemaVersion: 1,
     unlockSystemVersion: unlockSystemVersion as number,
@@ -185,6 +222,7 @@ export function parseBackup(text: string): PersistedState {
     stationOverrides,
     progress,
     unlockedMilestones: [...new Set(unlockedMilestonesRaw as string[])],
+    milestoneHistory,
   }
 }
 

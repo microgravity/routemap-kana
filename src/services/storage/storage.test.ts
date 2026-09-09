@@ -48,6 +48,12 @@ describe('バックアップ検証', () => {
     expect(parseBackup(JSON.stringify(oldState)).unlockedMilestones).toEqual([])
   })
 
+  it('履歴がない旧データを空のマイルストーン履歴として読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    delete oldState.milestoneHistory
+    expect(parseBackup(JSON.stringify(oldState)).milestoneHistory).toEqual([])
+  })
+
   it('段階解除の世代がない旧データを移行対象として読み込む', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
     delete oldState.unlockSystemVersion
@@ -58,6 +64,28 @@ describe('バックアップ検証', () => {
     const state = defaultState()
     state.unlockedMilestones.push('tokyo-metro-unlock-v1')
     expect(parseBackup(serializeBackup(state)).unlockedMilestones).toEqual(['tokyo-metro-unlock-v1'])
+  })
+
+  it('達成日時つきのマイルストーン履歴をバックアップで保持する', () => {
+    const state = defaultState()
+    state.milestoneHistory.push({
+      id: 'route-achievement-kodomonokuni-complete-v1',
+      kind: 'route-complete',
+      routeId: 'kodomonokuni',
+      achievedAt: '2026-09-05T08:30:00.000Z',
+    })
+    expect(parseBackup(serializeBackup(state)).milestoneHistory).toEqual(state.milestoneHistory)
+  })
+
+  it('不正なマイルストーン日時を拒否する', () => {
+    const state = defaultState()
+    state.milestoneHistory.push({
+      id: 'broken',
+      kind: 'route-complete',
+      routeId: 'kodomonokuni',
+      achievedAt: 'きょう',
+    })
+    expect(() => parseBackup(serializeBackup(state))).toThrow(/できごと/)
   })
 
   it('お手本なし進捗がない旧データを空の上位進捗として読み込む', () => {
