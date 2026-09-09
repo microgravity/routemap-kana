@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { builtInStations, routes } from '../data/stations'
 import { normalizeReading } from '../domain/kana'
-import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, reconcileProgress } from '../domain/progress'
+import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import type { AppSettings, AppState, CustomStation, PersistedState, Station, StationOverride } from '../domain/types'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
@@ -12,7 +12,7 @@ interface AppStateValue {
   storageWarning?: string
   routeStationIds: (routeId: string) => string[]
   updateSettings: (patch: Partial<AppSettings>) => void
-  markPositionComplete: (stationId: string, position: number, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean }
+  markPositionComplete: (stationId: string, position: number, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[] }
   setCurrentPosition: (stationId: string, position: number) => void
   saveStation: (station: CustomStation | Station, routeId?: string | null, insertAfterStationId?: string | null) => void
   deleteCustomStation: (stationId: string) => void
@@ -64,14 +64,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const markPositionComplete = useCallback((stationId: string, position: number, freeWritten = false) => {
     const station = stationById.get(stationId)
-    if (!station) return { firstAdd: false, allComplete: false, allFreeWritten: false }
+    if (!station) return { firstAdd: false, allComplete: false, allFreeWritten: false, routeAchievements: [] }
     const previous = reconcileProgress(state.progress[stationId], station.reading)
     const update = freeWritten ? completeFreeWrittenPosition : completePosition
     const completed = update(previous, position)
+    const progressAfter = { ...state.progress, [stationId]: completed }
+    const routeAchievements = newlyUnlockedRouteAchievements(
+      routes.map((route) => ({ routeId: route.id, stationIds: routeStationIds(route.id) })),
+      stationById,
+      state.progress,
+      progressAfter,
+    )
     const result = {
       firstAdd: !previous.added,
       allComplete: isStationPracticed(completed, station.reading),
       allFreeWritten: isStationFreeWritten(completed, station.reading),
+      routeAchievements,
     }
     setState((current) => {
       const existing = reconcileProgress(current.progress[stationId], station.reading)
@@ -81,7 +89,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
     })
     return result
-  }, [state.progress, stationById])
+  }, [routeStationIds, state.progress, stationById])
 
   const setCurrentPosition = useCallback((stationId: string, position: number) => {
     const station = stationById.get(stationId)

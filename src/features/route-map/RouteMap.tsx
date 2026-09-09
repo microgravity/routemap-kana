@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { stationCodeForRoute } from '../../data/stations'
 import type { Route } from '../../domain/types'
-import { isStationFreeWritten, isStationPracticed } from '../../domain/progress'
+import { isStationFreeWritten, isStationPracticed, type RouteAchievementLevel } from '../../domain/progress'
 import { useAppState } from '../../app/AppState'
 import { buildRouteMapLayout } from './routeMapLayout'
 
@@ -11,11 +11,13 @@ interface Props {
   mode: 'all' | 'mine'
   zoom: number
   celebrateStationId?: string
+  celebrateRouteLevel?: Exclude<RouteAchievementLevel, 'none'>
+  routeCelebrationKey?: number
   scrollResetKey: number
   onSelect: (stationId: string) => void
 }
 
-export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, scrollResetKey, onSelect }: Props) {
+export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, celebrateRouteLevel, routeCelebrationKey = 0, scrollResetKey, onSelect }: Props) {
   const { stationById, state } = useAppState()
   const scrollRef = useRef<HTMLDivElement>(null)
   const { width, points } = buildRouteMapLayout(stationIds, stationById)
@@ -40,7 +42,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
     <div className="route-map-shell">
       <div ref={scrollRef} className="route-map-scroll" aria-label={`${route.name}の しゅうろくくかん`}>
         <div className="route-map-scale" style={{ width: `${zoom * 100}%`, minWidth: `${width * zoom}px` }}>
-          <svg className="route-map" viewBox={`0 0 ${width} 310`} role="img" aria-labelledby="route-title route-desc">
+          <svg className={`route-map ${celebrateRouteLevel ? `route-map--celebrating route-map--celebrating-${celebrateRouteLevel}` : ''}`} viewBox={`0 0 ${width} 310`} role="img" aria-labelledby="route-title route-desc">
           <title id="route-title">{route.name}</title>
           <desc id="route-desc">{route.segmentLabel}の模式路線図</desc>
           <line x1={points[0]?.x ?? 0} x2={points.at(-1)?.x ?? 0} y1={y} y2={y} className="route-line-shadow" />
@@ -55,7 +57,8 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
                 y1={y}
                 y2={y}
                 stroke={route.color}
-                className={connected ? 'route-segment route-segment--connected' : 'route-segment'}
+                className={`${connected ? 'route-segment route-segment--connected' : 'route-segment'} ${celebrateRouteLevel ? 'route-segment--celebrating' : ''}`}
+                style={celebrateRouteLevel ? { '--celebration-index': index } as React.CSSProperties : undefined}
               />
             )
           })}
@@ -71,7 +74,8 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
             return (
               <g
                 key={id}
-                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--complete' : ''} ${freeWritten ? 'station-node--free-written' : ''} ${hidden ? 'station-node--hidden' : ''}`}
+                className={`station-node ${added ? 'station-node--added' : ''} ${practiced ? 'station-node--complete' : ''} ${freeWritten ? 'station-node--free-written' : ''} ${hidden ? 'station-node--hidden' : ''} ${celebrateRouteLevel ? 'station-node--route-celebrating' : ''}`}
+                style={celebrateRouteLevel ? { '--celebration-index': points.findIndex((point) => point.id === id) } as React.CSSProperties : undefined}
                 role={hidden ? undefined : 'button'}
                 tabIndex={hidden ? -1 : 0}
                 aria-label={`${station.displayName}、${station.reading}${freeWritten ? '、おてほんなしで ぜんぶかいた' : practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
@@ -108,6 +112,28 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, sc
                     to={`${celebratedPoint.x} 80`}
                     dur="1.1s"
                     begin="0s"
+                    fill="freeze"
+                  />
+                )}
+                <rect x="-29" y="-20" width="58" height="36" rx="11" fill="#fffaf0" stroke={route.color} strokeWidth="5" />
+                <rect x="-18" y="-11" width="15" height="12" rx="3" fill="#bce4e5" />
+                <rect x="5" y="-11" width="15" height="12" rx="3" fill="#bce4e5" />
+                <circle cx="-17" cy="19" r="6" fill="#34434a" />
+                <circle cx="17" cy="19" r="6" fill="#34434a" />
+              </g>
+            </g>
+          )}
+          {celebrateRouteLevel && points.length > 1 && (
+            <g key={`route-celebration-${routeCelebrationKey}`} className="route-completion-trip">
+              <g className="train" transform={`translate(${points.at(-1)?.x ?? 0}, 80)`}>
+                {!state.settings.reduceMotion && (
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    from={`${points[0]?.x ?? 0} 80`}
+                    to={`${points.at(-1)?.x ?? 0} 80`}
+                    dur="2.8s"
+                    begin=".15s"
                     fill="freeze"
                   />
                 )}

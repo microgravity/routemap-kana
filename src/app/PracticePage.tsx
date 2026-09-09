@@ -4,7 +4,7 @@ import { AppHeader } from '../components/AppHeader'
 import { hasGlyph } from '../data/kana'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
-import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress } from '../domain/progress'
+import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
 import { sampleGlyphGuide } from '../features/practice/sampleGlyphGuide'
@@ -33,7 +33,7 @@ export function PracticePage() {
   const [allowTraceOverride, setAllowTraceOverride] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const [replayKey, setReplayKey] = useState(0)
-  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; notice?: string; freeWritingPassed: boolean } | null>(null)
+  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; notice?: string; freeWritingPassed: boolean } | null>(null)
   const kana = characters[index] ?? ''
   const traceAvailable = hasGlyph(kana)
   const activeMode = mode === 'trace' && traceAvailable ? 'trace' : 'free'
@@ -114,6 +114,9 @@ export function PracticePage() {
   const next = () => goTo(activeMode === 'free'
     ? nextFreeWritingPosition(progress, station.reading, index)
     : nextUnpracticedPosition(progress, station.reading, index))
+  const primaryRouteAchievement = reward?.routeAchievements.find((achievement) => achievement.routeId === routeId)
+    ?? reward?.routeAchievements[0]
+  const mapRouteId = primaryRouteAchievement?.routeId ?? (routeId === 'found' ? 'toyoko' : routeId)
 
   return (
     <div className={`page-shell practice-page practice-page--${state.settings.handedness} ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
@@ -186,9 +189,9 @@ export function PracticePage() {
               <button
                 type="button"
                 className="primary-button"
-                onClick={() => navigate(`/?route=${routeId === 'found' ? 'toyoko' : routeId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten } })}
+                onClick={() => navigate(`/?route=${mapRouteId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements } })}
               >
-                ろせんずを みる
+                {reward.routeAchievements.length > 0 ? 'ろせん クリア！' : 'ろせんずを みる'}
               </button>
             </div>
           </div>

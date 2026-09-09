@@ -1,6 +1,18 @@
 import type { PracticeProgress, Station } from './types'
 import { readingVersion, splitKana } from './kana'
 
+export type RouteAchievementLevel = 'none' | 'complete' | 'master'
+
+export interface RouteAchievement {
+  routeId: string
+  level: Exclude<RouteAchievementLevel, 'none'>
+}
+
+export interface RouteProgressDefinition {
+  routeId: string
+  stationIds: string[]
+}
+
 export function freshProgress(reading: string): PracticeProgress {
   return {
     readingSnapshot: readingVersion(reading),
@@ -80,6 +92,40 @@ export function completedStationCount(
     const station = stationById.get(stationId)
     return Boolean(station && isStationPracticed(progress[stationId], station.reading))
   }).length
+}
+
+export function routeAchievementLevel(
+  stationIds: string[],
+  stationById: ReadonlyMap<string, Station>,
+  progress: Record<string, PracticeProgress>,
+): RouteAchievementLevel {
+  const uniqueStationIds = [...new Set(stationIds)]
+  if (uniqueStationIds.length === 0) return 'none'
+  const stations = uniqueStationIds.map((stationId) => stationById.get(stationId))
+  if (stations.some((station) => !station)) return 'none'
+  if (stations.every((station) => station && isStationFreeWritten(progress[station.id], station.reading))) {
+    return 'master'
+  }
+  if (stations.every((station) => station && isStationPracticed(progress[station.id], station.reading))) {
+    return 'complete'
+  }
+  return 'none'
+}
+
+export function newlyUnlockedRouteAchievements(
+  definitions: RouteProgressDefinition[],
+  stationById: ReadonlyMap<string, Station>,
+  before: Record<string, PracticeProgress>,
+  after: Record<string, PracticeProgress>,
+): RouteAchievement[] {
+  const rank: Record<RouteAchievementLevel, number> = { none: 0, complete: 1, master: 2 }
+  return definitions.flatMap(({ routeId, stationIds }) => {
+    const previousLevel = routeAchievementLevel(stationIds, stationById, before)
+    const nextLevel = routeAchievementLevel(stationIds, stationById, after)
+    return rank[nextLevel] > rank[previousLevel] && nextLevel !== 'none'
+      ? [{ routeId, level: nextLevel }]
+      : []
+  })
 }
 
 export function nextUnpracticedPosition(progress: PracticeProgress, reading: string, after: number): number {

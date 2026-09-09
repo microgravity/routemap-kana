@@ -1,4 +1,4 @@
-import { completeFreeWrittenPosition, completePosition, completedStationCount, freshProgress, isStationFreeWritten, isStationPracticed, practicedKanaSet, reconcileProgress } from './progress'
+import { completeFreeWrittenPosition, completePosition, completedStationCount, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, practicedKanaSet, reconcileProgress, routeAchievementLevel } from './progress'
 import type { Station } from './types'
 
 describe('練習進捗', () => {
@@ -59,5 +59,47 @@ describe('練習進捗', () => {
       custom: completePosition(freshProgress('いけ'), 0),
     }
     expect(practicedKanaSet(stations, progress)).toEqual(new Set(['が', 'い']))
+  })
+
+  it('路線全駅の完了とお手本なしマスターを既存進捗から算出する', () => {
+    const stations = new Map<string, Station>([
+      ['one', { id: 'one', displayName: '一', reading: 'あ', builtIn: true }],
+      ['two', { id: 'two', displayName: '二', reading: 'い', builtIn: true }],
+    ])
+    const partial = { one: completePosition(freshProgress('あ'), 0) }
+    const complete = { ...partial, two: completePosition(freshProgress('い'), 0) }
+    const master = {
+      one: completeFreeWrittenPosition(freshProgress('あ'), 0),
+      two: completeFreeWrittenPosition(freshProgress('い'), 0),
+    }
+    expect(routeAchievementLevel(['one', 'two'], stations, partial)).toBe('none')
+    expect(routeAchievementLevel(['one', 'two'], stations, complete)).toBe('complete')
+    expect(routeAchievementLevel(['one', 'two'], stations, master)).toBe('master')
+  })
+
+  it('未完了からクリア、通常クリアからマスターへの変化だけを通知する', () => {
+    const stations = new Map<string, Station>([
+      ['shared', { id: 'shared', displayName: '共有', reading: 'あ', builtIn: true }],
+      ['custom', { id: 'custom', displayName: '追加', reading: 'い', builtIn: false }],
+    ])
+    const before = { shared: freshProgress('あ'), custom: completePosition(freshProgress('い'), 0) }
+    const complete = { ...before, shared: completePosition(freshProgress('あ'), 0) }
+    const master = {
+      shared: completeFreeWrittenPosition(freshProgress('あ'), 0),
+      custom: completeFreeWrittenPosition(freshProgress('い'), 0),
+    }
+    const routes = [
+      { routeId: 'one', stationIds: ['shared'] },
+      { routeId: 'two', stationIds: ['shared', 'custom'] },
+    ]
+    expect(newlyUnlockedRouteAchievements(routes, stations, before, complete)).toEqual([
+      { routeId: 'one', level: 'complete' },
+      { routeId: 'two', level: 'complete' },
+    ])
+    expect(newlyUnlockedRouteAchievements(routes, stations, complete, master)).toEqual([
+      { routeId: 'one', level: 'master' },
+      { routeId: 'two', level: 'master' },
+    ])
+    expect(newlyUnlockedRouteAchievements(routes, stations, master, master)).toEqual([])
   })
 })
