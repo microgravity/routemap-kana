@@ -36,6 +36,15 @@ export function StationPage() {
   const routeId = stationRoutes.some((route) => route.id === requestedRouteId)
     ? requestedRouteId
     : stationRoutes[0]?.id ?? 'found'
+  const activeRoute = stationRoutes.find((route) => route.id === routeId)
+  const activeRouteStationIds = activeRoute ? routeStationIds(activeRoute.id) : []
+  const stationIndex = activeRouteStationIds.indexOf(station.id)
+  const previousStation = stationIndex > 0 ? stationById.get(activeRouteStationIds[stationIndex - 1]) : undefined
+  const nextStation = stationIndex >= 0 && stationIndex < activeRouteStationIds.length - 1
+    ? stationById.get(activeRouteStationIds[stationIndex + 1])
+    : undefined
+  const stationCode = activeRoute ? stationCodeForRoute(activeRoute, station.id) : undefined
+  const stationNameLength = Array.from(station.displayName).length
   const backToKana = params.get('from') === 'kana' && params.get('kana')
   const backUrl = backToKana ? `/kana/${encodeURIComponent(params.get('kana')!)}` : `/?route=${routeId === 'found' ? 'toyoko' : routeId}`
 
@@ -50,10 +59,26 @@ export function StationPage() {
       <main className="station-main">
         <Link className="back-link" to={backUrl}><MaterialIcon name="arrow_back" />{backToKana ? 'もじの えき' : 'ろせんず'}</Link>
         <article className="station-card">
-          <div className="station-sign" aria-hidden="true"><span /><span /></div>
-          <p className="eyebrow">この えきは</p>
-          <h1>{station.displayName}</h1>
-          <p className="station-big-reading">{station.reading}</p>
+          <section
+            className={`station-name-board ${stationNameLength >= 8 ? 'station-name-board--long' : ''}`}
+            style={{ '--station-route-color': activeRoute?.color ?? '#66bbb1' } as React.CSSProperties}
+            aria-label={`${station.displayName}の えきめいひょう`}
+          >
+            <div className="station-sign" aria-hidden="true"><span /><span /></div>
+            <div className="station-board-name">
+              <p className="eyebrow">この えきは</p>
+              <h1>{station.displayName}</h1>
+              <p className="station-big-reading">{station.reading}</p>
+            </div>
+            <div className="station-board-neighbors">
+              <BoardNeighbor station={previousStation} direction="まえの えき" />
+              <div className="station-board-route">
+                <small>{activeRoute?.name ?? 'みつけた えき'}</small>
+                {stationCode && <strong>{stationCode}</strong>}
+              </div>
+              <BoardNeighbor station={nextStation} direction="つぎの えき" next />
+            </div>
+          </section>
           <div className="route-badges route-badges--center" aria-label="この えきの ろせん">
             {stationRoutes.map((route) => (
               <span key={route.id} className="route-badge" style={{ '--route-color': route.color } as React.CSSProperties}>
@@ -82,6 +107,15 @@ export function StationPage() {
           </div>
         </article>
       </main>
+    </div>
+  )
+}
+
+function BoardNeighbor({ station, direction, next = false }: { station?: { displayName: string; reading: string }; direction: string; next?: boolean }) {
+  return (
+    <div className={`station-board-neighbor ${next ? 'station-board-neighbor--next' : ''}`}>
+      <small>{next ? `${direction} →` : `← ${direction}`}</small>
+      {station ? <><strong>{station.displayName}</strong><span>{station.reading}</span></> : <strong>ここが はし</strong>}
     </div>
   )
 }
