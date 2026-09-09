@@ -4,10 +4,12 @@ import { KanaIndexPage } from './KanaIndexPage'
 import { ParentPage } from './ParentPage'
 import { PracticePage } from './PracticePage'
 import { StationPage } from './StationPage'
+import { AnalyticsGate } from '../services/analytics/AnalyticsGate'
 
 export function App() {
   return (
     <HashRouter>
+      <AnalyticsGate />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/kana" element={<KanaIndexPage />} />

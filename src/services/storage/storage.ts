@@ -19,6 +19,7 @@ export const defaultSettings: AppSettings = {
   volume: 1,
   muted: false,
   reduceMotion: false,
+  analyticsEnabled: false,
 }
 
 export function defaultState(): PersistedState {
@@ -53,6 +54,12 @@ function validateSettings(value: unknown): AppSettings | null {
       ? value.traceStrictness
       : null
   if (!traceStrictness) return null
+  const analyticsEnabled = value.analyticsEnabled === undefined
+    ? false
+    : typeof value.analyticsEnabled === 'boolean'
+      ? value.analyticsEnabled
+      : null
+  if (analyticsEnabled === null) return null
   return {
     handedness: value.handedness,
     traceStrictness,
@@ -60,6 +67,7 @@ function validateSettings(value: unknown): AppSettings | null {
     volume: value.volume,
     muted: value.muted,
     reduceMotion: value.reduceMotion,
+    analyticsEnabled,
   }
 }
 
