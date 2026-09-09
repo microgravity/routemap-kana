@@ -6,11 +6,15 @@ import {
   SOTETSU_ROUTE_COUNT,
   TOKYU_OFFICIAL_STATION_COUNT,
   TOKYU_ROUTE_COUNT,
+  TOKYO_METRO_OFFICIAL_STATION_COUNT,
+  TOKYO_METRO_ROUTE_COUNT,
   builtInStationById,
   builtInStations,
   railwayOperators,
   routes,
 } from './stations'
+import { isHiraganaReading } from '../domain/kana'
+import { tokyoMetroStations } from './tokyoMetro'
 
 const expectedRoutes = [
   ['toyoko', 'tokyu', 21, '渋谷', '横浜', 'TY01', 'TY21'],
@@ -25,6 +29,18 @@ const expectedRoutes = [
   ['sotetsu-main', 'sotetsu', 18, '横浜', '海老名', 'SO01', 'SO18'],
   ['sotetsu-izumino', 'sotetsu', 8, '二俣川', '湘南台', 'SO10', 'SO37'],
   ['sotetsu-shinyokohama', 'sotetsu', 3, '西谷', '新横浜', 'SO08', 'SO52'],
+] as const
+
+const expectedMetroRoutes = [
+  ['metro-ginza', 19, '渋谷', '浅草', 'G01', 'G19'],
+  ['metro-marunouchi', 28, '荻窪', '池袋', 'M01', 'M25'],
+  ['metro-hibiya', 22, '中目黒', '北千住', 'H01', 'H22'],
+  ['metro-tozai', 23, '中野', '西船橋', 'T01', 'T23'],
+  ['metro-chiyoda', 20, '代々木上原', '北綾瀬', 'C01', 'C20'],
+  ['metro-yurakucho', 24, '和光市', '新木場', 'Y01', 'Y24'],
+  ['metro-hanzomon', 14, '渋谷', '押上〈スカイツリー前〉', 'Z01', 'Z14'],
+  ['metro-namboku', 19, '目黒', '赤羽岩淵', 'N01', 'N19'],
+  ['metro-fukutoshin', 16, '和光市', '渋谷', 'F01', 'F16'],
 ] as const
 
 const expectedOrder: Record<string, string[]> = {
@@ -43,24 +59,64 @@ const expectedOrder: Record<string, string[]> = {
 }
 
 describe('鉄道会社・路線・駅データ', () => {
-  it('東急9路線と相鉄3路線を会社別に収録する', () => {
+  it('東急9路線・相鉄3路線・東京メトロ9路線を会社別に収録する', () => {
     expect(TOKYU_ROUTE_COUNT).toBe(9)
     expect(SOTETSU_ROUTE_COUNT).toBe(3)
     expect(TOKYU_OFFICIAL_STATION_COUNT).toBe(99)
     expect(SOTETSU_OFFICIAL_STATION_COUNT).toBe(27)
-    expect(OFFICIAL_ROUTE_COUNT).toBe(12)
-    expect(OFFICIAL_STATION_COUNT).toBe(126)
+    expect(TOKYO_METRO_ROUTE_COUNT).toBe(9)
+    expect(TOKYO_METRO_OFFICIAL_STATION_COUNT).toBe(180)
+    expect(OFFICIAL_ROUTE_COUNT).toBe(21)
+    expect(OFFICIAL_STATION_COUNT).toBe(306)
     expect(routes).toHaveLength(OFFICIAL_ROUTE_COUNT)
     expect(railwayOperators.map((operator) => [operator.id, operator.routeIds])).toEqual([
       ['tokyu', ['toyoko', 'meguro', 'shinyokohama', 'denentoshi', 'oimachi', 'ikegami', 'tamagawa', 'setagaya', 'kodomonokuni']],
       ['sotetsu', ['sotetsu-main', 'sotetsu-izumino', 'sotetsu-shinyokohama']],
+      ['tokyo-metro', ['metro-ginza', 'metro-marunouchi', 'metro-hibiya', 'metro-tozai', 'metro-chiyoda', 'metro-yurakucho', 'metro-hanzomon', 'metro-namboku', 'metro-fukutoshin']],
     ])
   })
 
-  it('会社間の共有駅を統合した123 Station IDで収録する', () => {
+  it('会社間・路線間の共有駅を統合した264 Station IDで収録する', () => {
     expect(builtInStations).toHaveLength(NORMALIZED_STATION_COUNT)
     expect(new Set(builtInStations.map((station) => station.id)).size).toBe(NORMALIZED_STATION_COUNT)
-    expect(routes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(144)
+    expect(routes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(329)
+  })
+
+  it.each(expectedMetroRoutes)('%sの全駅・起終点・駅番号を公式順で保持する', (routeId, count, first, last, firstCode, lastCode) => {
+    const route = routes.find((item) => item.id === routeId)!
+    expect(route.operatorId).toBe('tokyo-metro')
+    expect(route.orderedStationIds).toHaveLength(count)
+    expect(route.stationCodes).toHaveLength(count)
+    expect(route.stationCodes[0]).toBe(firstCode)
+    expect(route.stationCodes.at(-1)).toBe(lastCode)
+    expect(builtInStationById.get(route.orderedStationIds[0])?.displayName).toBe(first)
+    expect(builtInStationById.get(route.orderedStationIds.at(-1)!)?.displayName).toBe(last)
+    expect(route.orderedStationIds.every((id) => builtInStationById.has(id))).toBe(true)
+  })
+
+  it('東京メトロの185路線別駅所属を144駅へ統合し読みをひらがなで保持する', () => {
+    const metroRoutes = routes.filter((route) => route.operatorId === 'tokyo-metro')
+    const metroStationIds = new Set(metroRoutes.flatMap((route) => route.orderedStationIds))
+    expect(metroRoutes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(185)
+    expect(metroStationIds.size).toBe(144)
+    expect(tokyoMetroStations).toHaveLength(141)
+    expect([...metroStationIds].every((id) => isHiraganaReading(builtInStationById.get(id)?.reading ?? ''))).toBe(true)
+  })
+
+  it('東京メトロ各線の代表的な途中駅を公式順で保持する', () => {
+    const stationAt = (routeId: string, code: string) => {
+      const route = routes.find((item) => item.id === routeId)!
+      return builtInStationById.get(route.orderedStationIds[route.stationCodes.indexOf(code)])?.displayName
+    }
+    expect(stationAt('metro-ginza', 'G09')).toBe('銀座')
+    expect(stationAt('metro-marunouchi', 'M06')).toBe('中野坂上')
+    expect(stationAt('metro-hibiya', 'H11')).toBe('築地')
+    expect(stationAt('metro-tozai', 'T12')).toBe('門前仲町')
+    expect(stationAt('metro-chiyoda', 'C10')).toBe('二重橋前〈丸の内〉')
+    expect(stationAt('metro-yurakucho', 'Y13')).toBe('飯田橋')
+    expect(stationAt('metro-hanzomon', 'Z08')).toBe('大手町')
+    expect(stationAt('metro-namboku', 'N10')).toBe('飯田橋')
+    expect(stationAt('metro-fukutoshin', 'F09')).toBe('池袋')
   })
 
   it.each(expectedRoutes)('%sの会社・駅数・起点・終点・駅番号・駅順を保つ', (routeId, operatorId, count, first, last, firstCode, lastCode) => {
@@ -81,11 +137,12 @@ describe('鉄道会社・路線・駅データ', () => {
       shinyokohama: ['SH03', 'SH02', 'SH01'],
       'sotetsu-izumino': ['SO10', 'SO31', 'SO32', 'SO33', 'SO34', 'SO35', 'SO36', 'SO37'],
       'sotetsu-shinyokohama': ['SO08', 'SO51', 'SO52'],
+      'metro-marunouchi': ['M01', 'M02', 'M03', 'M04', 'M05', 'm03', 'm04', 'm05', 'M06', 'M07', 'M08', 'M09', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16', 'M17', 'M18', 'M19', 'M20', 'M21', 'M22', 'M23', 'M24', 'M25'],
     }
     for (const route of routes) {
       const expectedCodes = specialCodes[route.id] ?? Array.from(
         { length: route.stationCodes.length },
-        (_, index) => `${route.stationCodes[0].slice(0, 2)}${String(index + 1).padStart(2, '0')}`,
+        (_, index) => `${route.stationCodes[0].replace(/\d+$/u, '')}${String(index + 1).padStart(2, '0')}`,
       )
       expect(route.stationCodes).toEqual(expectedCodes)
     }
@@ -101,6 +158,10 @@ describe('鉄道会社・路線・駅データ', () => {
     expect(ids.shinyokohama.has('tokyu-sh01') && ids['sotetsu-shinyokohama'].has('tokyu-sh01')).toBe(true)
     expect(ids['sotetsu-main'].has('sotetsu-so08') && ids['sotetsu-shinyokohama'].has('sotetsu-so08')).toBe(true)
     expect(ids['sotetsu-main'].has('sotetsu-so10') && ids['sotetsu-izumino'].has('sotetsu-so10')).toBe(true)
+    expect(ids.toyoko.has('tokyu-ty01') && ids['metro-ginza'].has('tokyu-ty01') && ids['metro-hanzomon'].has('tokyu-ty01') && ids['metro-fukutoshin'].has('tokyu-ty01')).toBe(true)
+    expect(ids.toyoko.has('tokyu-ty03') && ids['metro-hibiya'].has('tokyu-ty03')).toBe(true)
+    expect(ids.meguro.has('tokyu-mg01') && ids['metro-namboku'].has('tokyu-mg01')).toBe(true)
+    expect(ids['metro-ginza'].has('tokyometro-ginza') && ids['metro-marunouchi'].has('tokyometro-ginza') && ids['metro-hibiya'].has('tokyometro-ginza')).toBe(true)
   })
 
   it('既存駅IDを変更しない', () => {

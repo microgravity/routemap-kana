@@ -1,5 +1,6 @@
 export type Handedness = 'left' | 'right'
 export type TraceStrictness = 'gentle' | 'standard' | 'careful'
+export type LearningModeId = 'hiragana' | 'katakana' | 'kanji'
 
 export interface Station {
   id: string
@@ -20,6 +21,7 @@ export interface Route {
   stationCodes: string[]
   sourceUrl: string
   note?: string
+  unlockMilestoneId?: string
 }
 
 export interface RailwayOperator {
@@ -30,6 +32,13 @@ export interface RailwayOperator {
   color: string
   routeIds: string[]
   sourceUrl: string
+  unlockMilestoneId?: string
+}
+
+export interface LearningMode {
+  id: LearningModeId
+  name: string
+  unlockMilestoneId?: string
 }
 
 export interface CustomStation extends Station {
@@ -68,6 +77,7 @@ export interface PersistedState {
   customStations: CustomStation[]
   stationOverrides: Record<string, StationOverride>
   progress: Record<string, PracticeProgress>
+  unlockedMilestones: string[]
 }
 
 export type AppState = PersistedState

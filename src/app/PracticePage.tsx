@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { hasGlyph } from '../data/kana'
+import { railwayOperators, routes } from '../data/stations'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
 import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress, type RouteAchievement } from '../domain/progress'
+import { isRouteUnlocked } from '../domain/unlocks'
 import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
 import { sampleGlyphGuide } from '../features/practice/sampleGlyphGuide'
@@ -19,13 +21,18 @@ export function PracticePage() {
   const { stationId = '', position = '0' } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { stationById, state, setCurrentPosition, markPositionComplete } = useAppState()
+  const { stationById, state, routeStationIds, setCurrentPosition, markPositionComplete } = useAppState()
   const { speak } = useSpeech()
   const station = stationById.get(stationId)
   const characters = useMemo(() => splitKana(station?.reading ?? ''), [station?.reading])
   const parsed = Number(position)
   const index = Number.isInteger(parsed) && parsed >= 0 && parsed < characters.length ? parsed : 0
-  const routeId = params.get('route') ?? 'toyoko'
+  const requestedRouteId = params.get('route') ?? 'toyoko'
+  const unlockedRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+  const stationRoutes = station ? unlockedRoutes.filter((route) => routeStationIds(route.id).includes(station.id)) : []
+  const routeId = stationRoutes.some((route) => route.id === requestedRouteId)
+    ? requestedRouteId
+    : stationRoutes[0]?.id ?? 'found'
   const [mode, setMode] = useState<'trace' | 'free'>('trace')
   const [showGuide, setShowGuide] = useState(true)
   const [hasInk, setHasInk] = useState(false)
@@ -34,7 +41,7 @@ export function PracticePage() {
   const [allowTraceOverride, setAllowTraceOverride] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const [replayKey, setReplayKey] = useState(0)
-  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; notice?: string; freeWritingPassed: boolean } | null>(null)
+  const [reward, setReward] = useState<{ firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; unlockedMilestones: string[]; notice?: string; freeWritingPassed: boolean } | null>(null)
   const kana = characters[index] ?? ''
   const traceAvailable = hasGlyph(kana)
   const activeMode = mode === 'trace' && traceAvailable ? 'trace' : 'free'
@@ -48,7 +55,7 @@ export function PracticePage() {
     setTraceGuide(traceAvailable ? sampleGlyphGuide(kana) : null)
   }, [kana, traceAvailable])
 
-  if (!station || characters.length === 0) {
+  if (!station || characters.length === 0 || (station.builtIn && stationRoutes.length === 0)) {
     return <main className="simple-message"><h1>えきが みつかりません</h1><Link to="/">ろせんずへ</Link></main>
   }
 
@@ -191,7 +198,7 @@ export function PracticePage() {
               <button
                 type="button"
                 className="primary-button icon-button"
-                onClick={() => navigate(`/?route=${mapRouteId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements } })}
+                onClick={() => navigate(`/?route=${mapRouteId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements, unlockedMilestones: reward.unlockedMilestones } })}
               >
                 <MaterialIcon name={reward.routeAchievements.length > 0 ? 'celebration' : 'route'} filled={reward.routeAchievements.length > 0} />
                 {reward.routeAchievements.length > 0 ? 'ろせん クリア！' : 'ろせんずを みる'}

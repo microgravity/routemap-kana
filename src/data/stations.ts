@@ -1,4 +1,6 @@
 import type { RailwayOperator, Route, Station } from '../domain/types'
+import { TOKYO_METRO_UNLOCK_MILESTONE_ID } from '../domain/unlocks'
+import { TOKYO_METRO_SOURCE, tokyoMetroRoutes, tokyoMetroStations } from './tokyoMetro'
 
 const TOKYU_SOURCE = 'https://www.tokyu.co.jp/railway/station/'
 const SOTETSU_SOURCE = 'https://www.sotetsu.co.jp/train/stations/'
@@ -7,10 +9,12 @@ export const TOKYU_ROUTE_COUNT = 9
 export const TOKYU_OFFICIAL_STATION_COUNT = 99
 export const SOTETSU_ROUTE_COUNT = 3
 export const SOTETSU_OFFICIAL_STATION_COUNT = 27
-export const OFFICIAL_ROUTE_COUNT = TOKYU_ROUTE_COUNT + SOTETSU_ROUTE_COUNT
+export const TOKYO_METRO_ROUTE_COUNT = 9
+export const TOKYO_METRO_OFFICIAL_STATION_COUNT = 180
+export const OFFICIAL_ROUTE_COUNT = TOKYU_ROUTE_COUNT + SOTETSU_ROUTE_COUNT + TOKYO_METRO_ROUTE_COUNT
 export const OFFICIAL_STATION_COUNT =
-  TOKYU_OFFICIAL_STATION_COUNT + SOTETSU_OFFICIAL_STATION_COUNT
-export const NORMALIZED_STATION_COUNT = 123
+  TOKYU_OFFICIAL_STATION_COUNT + SOTETSU_OFFICIAL_STATION_COUNT + TOKYO_METRO_OFFICIAL_STATION_COUNT
+export const NORMALIZED_STATION_COUNT = 264
 
 function station(id: string, displayName: string, reading: string): Station {
   return { id, displayName, reading, builtIn: true, sourceUrl: TOKYU_SOURCE }
@@ -20,7 +24,7 @@ function sotetsuStation(id: string, displayName: string, reading: string): Stati
   return { id, displayName, reading, builtIn: true, sourceUrl: SOTETSU_SOURCE }
 }
 
-export const builtInStations: Station[] = [
+const existingBuiltInStations: Station[] = [
   // 東横線（既存のTY05〜TY11のIDは変更しない）
   station('tokyu-ty01', '渋谷', 'しぶや'),
   station('tokyu-ty02', '代官山', 'だいかんやま'),
@@ -169,6 +173,8 @@ export const builtInStations: Station[] = [
   sotetsuStation('sotetsu-so51', '羽沢横浜国大', 'はざわよこはまこくだい'),
 ]
 
+export const builtInStations: Station[] = [...existingBuiltInStations, ...tokyoMetroStations]
+
 const toyokoIds = Array.from({ length: 21 }, (_, index) => `tokyu-ty${String(index + 1).padStart(2, '0')}`)
 const meguroIds = [
   'tokyu-mg01', 'tokyu-mg02', 'tokyu-mg03', 'tokyu-mg04', 'tokyu-mg05', 'tokyu-mg06', 'tokyu-mg07',
@@ -189,7 +195,7 @@ function codes(prefix: string, count: number): string[] {
   return Array.from({ length: count }, (_, index) => `${prefix}${String(index + 1).padStart(2, '0')}`)
 }
 
-export const routes: Route[] = [
+const existingRoutes: Route[] = [
   { id: 'toyoko', operatorId: 'tokyu', name: 'とうよこせん', color: '#db5570', segmentLabel: 'しぶや 〜 よこはま（21えき）', orderedStationIds: toyokoIds, stationCodes: codes('TY', 21), sourceUrl: 'https://www.tokyu.co.jp/railway/ty/' },
   { id: 'meguro', operatorId: 'tokyu', name: 'めぐろせん', color: '#319c95', segmentLabel: 'めぐろ 〜 ひよし（13えき）', orderedStationIds: meguroIds, stationCodes: codes('MG', 13), sourceUrl: 'https://www.tokyu.co.jp/railway/mg/' },
   { id: 'shinyokohama', operatorId: 'tokyu', name: 'とうきゅうしんよこはません', color: '#7d69a8', segmentLabel: 'ひよし 〜 しんよこはま（3えき）', orderedStationIds: shinyokohamaIds, stationCodes: ['SH03', 'SH02', 'SH01'], sourceUrl: 'https://www.tokyu.co.jp/railway/sh/' },
@@ -231,6 +237,8 @@ export const routes: Route[] = [
   },
 ]
 
+export const routes: Route[] = [...existingRoutes, ...tokyoMetroRoutes]
+
 export const railwayOperators: RailwayOperator[] = [
   {
     id: 'tokyu', name: 'とうきゅうでんてつ', displayName: '東急電鉄', shortName: 'とうきゅう',
@@ -241,6 +249,11 @@ export const railwayOperators: RailwayOperator[] = [
     id: 'sotetsu', name: 'そうてつ', displayName: '相模鉄道', shortName: 'そうてつ',
     color: '#315a7d', routeIds: routes.filter((route) => route.operatorId === 'sotetsu').map((route) => route.id),
     sourceUrl: SOTETSU_SOURCE,
+  },
+  {
+    id: 'tokyo-metro', name: 'とうきょうメトロ', displayName: '東京地下鉄', shortName: 'とうきょうメトロ',
+    color: '#149b95', routeIds: routes.filter((route) => route.operatorId === 'tokyo-metro').map((route) => route.id),
+    sourceUrl: TOKYO_METRO_SOURCE, unlockMilestoneId: TOKYO_METRO_UNLOCK_MILESTONE_ID,
   },
 ]
 

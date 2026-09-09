@@ -6,6 +6,7 @@ import { railwayOperators, routes } from '../data/stations'
 import { hasGlyph } from '../data/kana'
 import { isHiraganaReading, normalizeReading, splitKana } from '../domain/kana'
 import type { CustomStation } from '../domain/types'
+import { isRouteUnlocked } from '../domain/unlocks'
 import { useSpeech } from '../services/speech/useSpeech'
 import { parseBackup, serializeBackup } from '../services/storage/storage'
 import { useAppState } from './AppState'
@@ -71,6 +72,7 @@ export function ParentPage() {
   const insertionChoices = routeId
     ? routeStationIds(routeId).filter((id) => id !== editingStation?.id).map((id) => stationById.get(id)).filter(Boolean)
     : []
+  const editableRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
 
   const submitStation = (event: FormEvent) => {
     event.preventDefault()
@@ -201,9 +203,9 @@ export function ParentPage() {
                 <>
                   <label className="field"><span>置く場所</span><select value={routeId} onChange={(event) => { setRouteId(event.target.value); setInsertAfter('') }}>
                     <option value="">みつけた えき</option>
-                    {railwayOperators.map((operator) => (
+                    {railwayOperators.filter((operator) => editableRoutes.some((route) => route.operatorId === operator.id)).map((operator) => (
                       <optgroup key={operator.id} label={operator.displayName}>
-                        {routes.filter((route) => route.operatorId === operator.id).map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}
+                        {editableRoutes.filter((route) => route.operatorId === operator.id).map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}
                       </optgroup>
                     ))}
                   </select></label>

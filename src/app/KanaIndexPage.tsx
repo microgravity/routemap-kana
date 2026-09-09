@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
-import { routes, stationCodeForRoute } from '../data/stations'
+import { railwayOperators, routes, stationCodeForRoute } from '../data/stations'
 import { normalizeReading, splitKana } from '../domain/kana'
 import { practicedKanaSet } from '../domain/progress'
 import { buildKanaStationIndex, matchesForKana } from '../domain/stationIndex'
 import type { Route } from '../domain/types'
+import { isRouteUnlocked } from '../domain/unlocks'
 import { useAppState } from './AppState'
 
 const listedKana = new Set([...basicKanaRows.flat(), ...voicedKanaRows.flat(), ...smallKanaRows.flat()].filter((kana): kana is string => Boolean(kana)))
@@ -16,12 +17,20 @@ export function KanaIndexPage() {
   const { kana: routeKana } = useParams()
   const navigate = useNavigate()
   const { stations, stationById, routeStationIds, state } = useAppState()
-  const indexedRoutes = useMemo(
-    () => routes.map((route) => ({ ...route, orderedStationIds: routeStationIds(route.id) })),
-    [routeStationIds],
+  const unlockedRoutes = useMemo(
+    () => routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones)),
+    [state.unlockedMilestones],
   )
-  const index = useMemo(() => buildKanaStationIndex(stations, indexedRoutes), [indexedRoutes, stations])
-  const practicedKana = useMemo(() => practicedKanaSet(stations, state.progress), [state.progress, stations])
+  const indexedRoutes = useMemo(
+    () => unlockedRoutes.map((route) => ({ ...route, orderedStationIds: routeStationIds(route.id) })),
+    [routeStationIds, unlockedRoutes],
+  )
+  const indexedStations = useMemo(() => {
+    const accessibleIds = new Set(indexedRoutes.flatMap((route) => route.orderedStationIds))
+    return stations.filter((station) => accessibleIds.has(station.id) || (!station.builtIn && !state.customStations.find((item) => item.id === station.id)?.routeId))
+  }, [indexedRoutes, state.customStations, stations])
+  const index = useMemo(() => buildKanaStationIndex(indexedStations, indexedRoutes), [indexedRoutes, indexedStations])
+  const practicedKana = useMemo(() => practicedKanaSet(indexedStations, state.progress), [indexedStations, state.progress])
   const normalizedKana = routeKana ? normalizeReading(routeKana) : ''
   const selectedKana = splitKana(normalizedKana).length === 1 && listedKana.has(normalizedKana) ? normalizedKana : ''
   const matches = selectedKana ? matchesForKana(index, selectedKana) : []

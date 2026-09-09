@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
-import { routes, stationCodeForRoute } from '../data/stations'
+import { railwayOperators, routes, stationCodeForRoute } from '../data/stations'
 import { splitKana } from '../domain/kana'
 import { reconcileProgress } from '../domain/progress'
+import { isRouteUnlocked } from '../domain/unlocks'
 import { KanaStrip } from '../features/practice/KanaStrip'
 import { useSpeech } from '../services/speech/useSpeech'
 import { useAppState } from './AppState'
@@ -16,7 +17,7 @@ export function StationPage() {
   const { stationById, state, routeStationIds, setCurrentPosition } = useAppState()
   const { speak, available } = useSpeech()
   const station = stationById.get(stationId)
-  const routeId = params.get('route') ?? 'toyoko'
+  const requestedRouteId = params.get('route') ?? 'toyoko'
   const storedPosition = station ? reconcileProgress(state.progress[station.id], station.reading).currentPosition : 0
   const focusParam = params.get('focus')
   const focusValue = focusParam === null ? Number.NaN : Number(focusParam)
@@ -29,7 +30,12 @@ export function StationPage() {
 
   if (!station) return <NotFound />
   const progress = reconcileProgress(state.progress[station.id], station.reading)
-  const stationRoutes = routes.filter((route) => routeStationIds(route.id).includes(station.id))
+  const unlockedRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+  const stationRoutes = unlockedRoutes.filter((route) => routeStationIds(route.id).includes(station.id))
+  if (station.builtIn && stationRoutes.length === 0) return <LockedStation />
+  const routeId = stationRoutes.some((route) => route.id === requestedRouteId)
+    ? requestedRouteId
+    : stationRoutes[0]?.id ?? 'found'
   const backToKana = params.get('from') === 'kana' && params.get('kana')
   const backUrl = backToKana ? `/kana/${encodeURIComponent(params.get('kana')!)}` : `/?route=${routeId === 'found' ? 'toyoko' : routeId}`
 
@@ -84,6 +90,16 @@ function NotFound() {
   return (
     <main className="simple-message">
       <h1>えきが みつかりません</h1>
+      <Link to="/">ろせんずへ もどる</Link>
+    </main>
+  )
+}
+
+function LockedStation() {
+  return (
+    <main className="simple-message">
+      <MaterialIcon name="lock" filled />
+      <h1>まだ はいれない えきだよ</h1>
       <Link to="/">ろせんずへ もどる</Link>
     </main>
   )

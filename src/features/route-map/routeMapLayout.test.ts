@@ -10,7 +10,7 @@ const station = (id: string, displayName: string, reading: string): Station => (
 })
 
 describe('路線図の駅間隔', () => {
-  it('全12路線の組み込み駅名と読みが隣の駅へ重ならない', () => {
+  it('全21路線の組み込み駅名と読みが隣の駅へ重ならない', () => {
     for (const route of routes) {
       const { points } = buildRouteMapLayout(route.orderedStationIds, builtInStationById)
       for (let index = 1; index < points.length; index += 1) {

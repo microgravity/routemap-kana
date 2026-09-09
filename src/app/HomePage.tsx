@@ -4,6 +4,7 @@ import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { completedStationCount, routeAchievementLevel, type RouteAchievement } from '../domain/progress'
+import { isOperatorUnlocked, isRouteUnlocked, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
 import { RouteMap } from '../features/route-map/RouteMap'
 import { useAppState } from './AppState'
 
@@ -12,6 +13,7 @@ interface CelebrationState {
   firstAdd?: boolean
   allFreeWritten?: boolean
   routeAchievements?: RouteAchievement[]
+  unlockedMilestones?: string[]
 }
 
 export function HomePage() {
@@ -28,15 +30,22 @@ export function HomePage() {
   const [routeCelebrationReplayKey, setRouteCelebrationReplayKey] = useState(0)
   const [manualRouteCelebration, setManualRouteCelebration] = useState<RouteAchievement | undefined>()
   const [unlockedRouteCelebrations] = useState<RouteAchievement[]>(celebration.routeAchievements ?? [])
-  const selectedRoute = routes.find((route) => route.id === params.get('route')) ?? routes[0]
+  const availableRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+  const requestedRoute = routes.find((route) => route.id === params.get('route'))
+  const selectedRoute = requestedRoute && isRouteUnlocked(requestedRoute, railwayOperators, state.unlockedMilestones)
+    ? requestedRoute
+    : availableRoutes[0]
   const [lastRouteByOperator, setLastRouteByOperator] = useState<Record<string, string>>({
     [selectedRoute.operatorId]: selectedRoute.id,
   })
   const selectedOperator = railwayOperatorById.get(selectedRoute.operatorId) ?? railwayOperators[0]
-  const visibleRoutes = routes.filter((route) => route.operatorId === selectedOperator.id)
+  const visibleRoutes = routes.filter((route) => route.operatorId === selectedOperator.id && isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
   const routeCelebrations = manualRouteCelebration ? [manualRouteCelebration] : unlockedRouteCelebrations
   const activeRouteCelebration = routeCelebrationDismissed ? undefined : routeCelebrations[routeCelebrationIndex]
   const activeCelebrationRoute = routes.find((route) => route.id === activeRouteCelebration?.routeId)
+  const newlyUnlockedOperator = railwayOperators.find((operator) => (
+    operator.unlockMilestoneId && celebration.unlockedMilestones?.includes(operator.unlockMilestoneId)
+  ))
   const routeProgress = useMemo(() => new Map(routes.map((route) => {
     const stationIds = routeStationIds(route.id)
     return [route.id, {
@@ -51,6 +60,12 @@ export function HomePage() {
       masteredRoutes: operator.routeIds.filter((routeId) => routeProgress.get(routeId)?.achievement === 'master').length,
     }]
   })), [routeProgress])
+  const operatorUnlockProgress = useMemo(() => new Map(railwayOperators.flatMap((operator) => {
+    const milestone = operator.unlockMilestoneId ? unlockMilestoneById.get(operator.unlockMilestoneId) : undefined
+    return milestone
+      ? [[operator.id, calculateUnlockProgress(milestone, { routes, stationById, progress: state.progress })] as const]
+      : []
+  })), [state.progress, stationById])
   const selectedProgress = routeProgress.get(selectedRoute.id) ?? { stationIds: [], completed: 0, achievement: 'none' as const }
   const celebrationProgress = activeCelebrationRoute
     ? routeProgress.get(activeCelebrationRoute.id)
@@ -63,8 +78,10 @@ export function HomePage() {
 
   const chooseRoute = (routeId: string) => {
     const route = routes.find((item) => item.id === routeId)
-    if (route) {
+    if (route && isRouteUnlocked(route, railwayOperators, state.unlockedMilestones)) {
       setLastRouteByOperator((current) => ({ ...current, [route.operatorId]: routeId }))
+    } else {
+      return
     }
     setParams({ route: routeId })
     setZoom(1)
@@ -73,11 +90,12 @@ export function HomePage() {
 
   const chooseOperator = (operatorId: string) => {
     const operator = railwayOperatorById.get(operatorId)
-    if (!operator) return
+    if (!operator || !isOperatorUnlocked(operator, state.unlockedMilestones)) return
     const rememberedRouteId = lastRouteByOperator[operatorId]
     const routeId = rememberedRouteId && operator.routeIds.includes(rememberedRouteId)
+      && availableRoutes.some((route) => route.id === rememberedRouteId)
       ? rememberedRouteId
-      : operator.routeIds[0]
+      : availableRoutes.find((route) => route.operatorId === operatorId)?.id
     if (routeId) chooseRoute(routeId)
   }
 
@@ -92,7 +110,7 @@ export function HomePage() {
 
   const goToNextRoute = () => {
     const currentRoute = activeCelebrationRoute ?? selectedRoute
-    const operatorRoutes = routes.filter((route) => route.operatorId === currentRoute.operatorId)
+    const operatorRoutes = availableRoutes.filter((route) => route.operatorId === currentRoute.operatorId)
     const currentIndex = operatorRoutes.findIndex((route) => route.id === currentRoute.id)
     const nextRoute = operatorRoutes[(currentIndex + 1) % operatorRoutes.length]
     setRouteCelebrationDismissed(true)
@@ -165,21 +183,27 @@ export function HomePage() {
               <nav className="operator-tabs" aria-label="てつどうがいしゃを えらぶ">
                 {railwayOperators.map((operator) => {
                   const progress = operatorProgress.get(operator.id) ?? { completedRoutes: 0, masteredRoutes: 0 }
+                  const unlocked = isOperatorUnlocked(operator, state.unlockedMilestones)
+                  const accessProgress = operatorUnlockProgress.get(operator.id)
                   return (
                     <button
                       key={operator.id}
                       type="button"
-                      className={operator.id === selectedOperator.id ? 'operator-tab operator-tab--active' : 'operator-tab'}
+                      className={`${operator.id === selectedOperator.id ? 'operator-tab operator-tab--active' : 'operator-tab'} ${unlocked ? '' : 'operator-tab--locked'}`.trim()}
                       style={{ '--operator-color': operator.color } as React.CSSProperties}
                       aria-pressed={operator.id === selectedOperator.id}
+                      disabled={!unlocked}
                       onClick={() => chooseOperator(operator.id)}
                     >
-                      <i className="operator-tab-mark" aria-hidden="true"><span /><span /><span /></i>
+                      {unlocked
+                        ? <i className="operator-tab-mark" aria-hidden="true"><span /><span /><span /></i>
+                        : <span className="operator-tab-lock" aria-hidden="true"><MaterialIcon name="lock" filled /></span>}
                       <span className="operator-tab-copy">
                         <strong>{operator.name}</strong>
                         <small>
-                          {progress.completedRoutes}/{operator.routeIds.length}ろせん クリア
-                          {progress.masteredRoutes > 0 && `　★★${progress.masteredRoutes}`}
+                          {unlocked
+                            ? <>{progress.completedRoutes}/{operator.routeIds.length}ろせん クリア{progress.masteredRoutes > 0 && `　★★${progress.masteredRoutes}`}</>
+                            : <>{accessProgress?.completed ?? 0}/{accessProgress?.total ?? 0}ろせん　あと{Math.max(0, (accessProgress?.total ?? 0) - (accessProgress?.completed ?? 0))}ろせん</>}
                         </small>
                       </span>
                     </button>
@@ -300,6 +324,12 @@ export function HomePage() {
               {celebrationProgress.stationIds.length} / {celebrationProgress.stationIds.length} えき ぜんぶ かけた
             </p>
             {activeRouteCelebration.level === 'master' && <p className="route-reward-master-copy">おてほんなしで ぜんえき クリア！</p>}
+            {newlyUnlockedOperator && (
+              <div className="operator-unlock-reward" role="status">
+                <MaterialIcon name="lock_open" filled />
+                <span><strong>{newlyUnlockedOperator.name}が ひらいた！</strong><small>あたらしい 9ろせんへ しゅっぱつ！</small></span>
+              </div>
+            )}
             <div className="route-reward-actions">
               <button type="button" className="soft-button icon-button" onClick={() => setRouteCelebrationReplayKey((value) => value + 1)}><MaterialIcon name="replay" />もういちど おいわい</button>
               {routeCelebrationIndex < routeCelebrations.length - 1

@@ -12,7 +12,7 @@
 
 ## 組み込み駅・路線を変更する
 
-組み込み駅は [`src/data/stations.ts`](../src/data/stations.ts) にあります。
+東急・相鉄の組み込み駅は[`src/data/stations.ts`](../src/data/stations.ts)、東京メトロは[`src/data/tokyoMetro.ts`](../src/data/tokyoMetro.ts)にあります。会社や路線が増える場合は会社単位でファイルを分け、`stations.ts`で統合します。
 
 - `Station.id`は駅名や配列位置から作らず、公開後は変更しません。
 - 読みはUnicode NFCのひらがなにします。
@@ -21,6 +21,7 @@
 - `Route.stationCodes`は`orderedStationIds`と同じ順・同じ件数にします。
 - `segmentLabel`に収録区間を明示します。
 - 公式情報を確認し、[`docs/sources-and-licenses.md`](sources-and-licenses.md)へ出典を追加します。
+- 公開後の解除条件は「現在の全路線」から動的に作らず、`src/domain/unlocks.ts`へ固定ID・固定路線集合のマイルストーンとして追加します。
 
 追加後は必ず次を実行します。
 
@@ -43,3 +44,5 @@ npm run build
 ## 保存形式
 
 JSONには`schemaVersion`があります。既存フィールドの意味を変えず、互換性のない変更時はバージョンを上げ、`src/services/storage`へ明示的な移行処理とテストを追加します。インポートは全件検証後の置換方式を維持してください。
+
+`unlockedMilestones`は一度獲得したコンテンツ解除を保持するための記録です。路線進捗そのものは従来どおり`progress`から算出し、重複保存しません。将来の練習モードは`LearningModeId`で区別し、駅IDだけをキーとする現在のひらがな進捗へカタカナ・漢字の位置を混在させないでください。

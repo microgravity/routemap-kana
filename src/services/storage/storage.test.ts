@@ -42,6 +42,18 @@ describe('バックアップ検証', () => {
     expect(parseBackup(JSON.stringify(oldState)).settings.traceStrictness).toBe('standard')
   })
 
+  it('解除記録がない旧データを未解除の状態で読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    delete oldState.unlockedMilestones
+    expect(parseBackup(JSON.stringify(oldState)).unlockedMilestones).toEqual([])
+  })
+
+  it('一度獲得した解除記録をバックアップで保持する', () => {
+    const state = defaultState()
+    state.unlockedMilestones.push('tokyo-metro-unlock-v1')
+    expect(parseBackup(serializeBackup(state)).unlockedMilestones).toEqual(['tokyo-metro-unlock-v1'])
+  })
+
   it('お手本なし進捗がない旧データを空の上位進捗として読み込む', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
     oldState.progress['tokyu-ty05'] = {

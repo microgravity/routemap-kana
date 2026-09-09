@@ -27,6 +27,7 @@ export function defaultState(): PersistedState {
     customStations: [],
     stationOverrides: {},
     progress: {},
+    unlockedMilestones: [],
   }
 }
 
@@ -130,7 +131,10 @@ export function parseBackup(text: string): PersistedState {
   }
   if (!isRecord(raw) || raw.schemaVersion !== 1) throw new Error('たいおうしていない データのバージョンです')
   const settings = validateSettings(raw.settings)
-  if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)) {
+  const unlockedMilestonesRaw = raw.unlockedMilestones ?? []
+  if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)
+    || !Array.isArray(unlockedMilestonesRaw)
+    || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)) {
     throw new Error('データの かたちが ただしくありません')
   }
 
@@ -169,7 +173,14 @@ export function parseBackup(text: string): PersistedState {
     progress[id] = item
   }
 
-  return { schemaVersion: 1, settings, customStations, stationOverrides, progress }
+  return {
+    schemaVersion: 1,
+    settings,
+    customStations,
+    stationOverrides,
+    progress,
+    unlockedMilestones: [...new Set(unlockedMilestonesRaw as string[])],
+  }
 }
 
 export function loadState(): { state: PersistedState; warning?: string } {
