@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { routes, stationCodeForRoute } from '../data/stations'
 import { splitKana } from '../domain/kana'
 import { reconcileProgress } from '../domain/progress'
@@ -41,7 +42,7 @@ export function StationPage() {
     <div className={`page-shell station-page ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
       <AppHeader compact />
       <main className="station-main">
-        <Link className="back-link" to={backUrl}>{backToKana ? '← もじの えき' : '← ろせんず'}</Link>
+        <Link className="back-link" to={backUrl}><MaterialIcon name="arrow_back" />{backToKana ? 'もじの えき' : 'ろせんず'}</Link>
         <article className="station-card">
           <div className="station-sign" aria-hidden="true"><span /><span /></div>
           <p className="eyebrow">この えきは</p>
@@ -65,11 +66,11 @@ export function StationPage() {
           <p className="swipe-hint">もじを おすか、ゆびで よこに なぞって きいてみよう</p>
           <div className="station-actions">
             <button type="button" className="big-action big-action--listen" onClick={() => speak(station.speechText ?? station.reading)}>
-              <span aria-hidden="true">♪</span><strong>きく</strong>
+              <MaterialIcon name="volume_up" filled /><strong>きく</strong>
               {!available && <small>このたんまつでは おとがでません</small>}
             </button>
             <button type="button" className="big-action big-action--write" onClick={() => startAt(selectedPosition)}>
-              <span aria-hidden="true">✎</span><strong>かく</strong>
+              <MaterialIcon name="draw" filled /><strong>かく</strong>
               <small>{progress.practicedPositions.length}/{splitKana(station.reading).length} もじ</small>
             </button>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { hasMeaningfulInk, pointDistance, pointInViewBox, type Point } from '../../domain/input'
 import { GlyphGuide } from './GlyphGuide'
+import { MaterialIcon } from '../../components/MaterialIcon'
 
 interface Props {
   kana: string
@@ -136,11 +137,11 @@ export function WritingPad({ kana, showGuide, animateGuide, replayKey, onInkChan
         </svg>
       </div>
       <div className="pad-tools" aria-label="かいたせんの そうさ">
-        <button type="button" className="soft-button" onClick={() => update(strokesRef.current.slice(0, -1))} disabled={strokes.length === 0}>
-          <span aria-hidden="true">↶</span> ひとつ もどす
+        <button type="button" className="soft-button icon-button" onClick={() => update(strokesRef.current.slice(0, -1))} disabled={strokes.length === 0}>
+          <MaterialIcon name="undo" />ひとつ もどす
         </button>
-        <button type="button" className="soft-button" onClick={() => update([])} disabled={strokes.length === 0}>
-          <span aria-hidden="true">⌫</span> けす
+        <button type="button" className="soft-button icon-button" onClick={() => update([])} disabled={strokes.length === 0}>
+          <MaterialIcon name="backspace" />けす
         </button>
       </div>
     </div>

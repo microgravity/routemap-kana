@@ -1,5 +1,6 @@
 import { useRef, type PointerEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { MaterialIcon } from './MaterialIcon'
 
 export function AppHeader({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate()
@@ -39,7 +40,7 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
           }}
           aria-label="おうちのひとの設定。長押ししてください"
         >
-          <span aria-hidden="true">⌂</span> おうちのひと
+          <MaterialIcon name="settings" filled /> おうちのひと
           <small>ながく おす</small>
         </button>
       )}

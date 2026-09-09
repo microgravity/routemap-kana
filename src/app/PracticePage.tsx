@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { hasGlyph } from '../data/kana'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
@@ -123,7 +124,7 @@ export function PracticePage() {
       <AppHeader compact />
       <main className="practice-main">
         <div className="practice-topbar">
-          <Link className="back-link" to={`/station/${station.id}?route=${routeId}`}>← {station.reading}</Link>
+          <Link className="back-link" to={`/station/${station.id}?route=${routeId}`}><MaterialIcon name="arrow_back" />{station.reading}</Link>
           <div className="practice-mode-area">
             {activeMode === 'trace'
               ? <span className="trace-level">はんてい：{strictnessNames[state.settings.traceStrictness]}</span>
@@ -161,13 +162,13 @@ export function PracticePage() {
           />
 
           <aside className="practice-tools" aria-label="れんしゅうの そうさ">
-            <button type="button" className="tool-button" onClick={() => speak(speechForKana(kana))}><span>♪</span>きく</button>
-            <button type="button" className="tool-button" disabled={activeMode === 'free'} onClick={() => { setShowGuide(true); setReplayKey((value) => value + 1) }}><span>▶</span>おてほん</button>
-            <button type="button" className="tool-button" disabled={activeMode === 'free'} onClick={() => setShowGuide((value) => !value)}><span>◉</span>{showGuide ? 'かくす' : 'みる'}</button>
+            <button type="button" className="tool-button icon-button" onClick={() => speak(speechForKana(kana))}><MaterialIcon name="volume_up" />きく</button>
+            <button type="button" className="tool-button icon-button" disabled={activeMode === 'free'} onClick={() => { setShowGuide(true); setReplayKey((value) => value + 1) }}><MaterialIcon name="play_arrow" filled />おてほん</button>
+            <button type="button" className="tool-button icon-button" disabled={activeMode === 'free'} onClick={() => setShowGuide((value) => !value)}><MaterialIcon name={showGuide ? 'visibility_off' : 'visibility'} />{showGuide ? 'かくす' : 'みる'}</button>
             <button type="button" className={`done-button ${allowTraceOverride ? 'done-button--override' : ''}`} disabled={!hasInk} onClick={() => done(allowTraceOverride)}>
-              <span>✓</span>{allowTraceOverride ? 'このまま できた' : 'できた'}
+              <MaterialIcon name="check_circle" filled />{allowTraceOverride ? 'このまま できた' : 'できた'}
             </button>
-            <button type="button" className="tool-button" onClick={next}><span>→</span>つぎ</button>
+            <button type="button" className="tool-button icon-button" onClick={next}><MaterialIcon name="skip_next" />つぎ</button>
           </aside>
         </section>
         {traceMessage
@@ -183,14 +184,16 @@ export function PracticePage() {
             <h2 id="reward-title">{reward.freeWritingPassed ? 'おてほんなし クリア！' : reward.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</h2>
             {reward.notice && <p className={`reward-notice ${activeMode === 'free' && !reward.freeWritingPassed ? 'reward-notice--try-again' : ''}`}>{reward.notice}</p>}
             <div className="reward-actions">
-              <button type="button" className="soft-button" onClick={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? () => goTo(0) : next}>
+              <button type="button" className="soft-button icon-button" onClick={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? () => goTo(0) : next}>
+                <MaterialIcon name={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? 'replay' : 'skip_next'} />
                 {(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? 'もういちど かく' : 'つぎの もじ'}
               </button>
               <button
                 type="button"
-                className="primary-button"
+                className="primary-button icon-button"
                 onClick={() => navigate(`/?route=${mapRouteId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements } })}
               >
+                <MaterialIcon name={reward.routeAchievements.length > 0 ? 'celebration' : 'route'} filled={reward.routeAchievements.length > 0} />
                 {reward.routeAchievements.length > 0 ? 'ろせん クリア！' : 'ろせんずを みる'}
               </button>
             </div>

@@ -4,6 +4,7 @@ import type { Route } from '../../domain/types'
 import { isStationFreeWritten, isStationPracticed, type RouteAchievementLevel } from '../../domain/progress'
 import { useAppState } from '../../app/AppState'
 import { buildRouteMapLayout } from './routeMapLayout'
+import { MaterialIcon } from '../../components/MaterialIcon'
 
 interface Props {
   route: Route
@@ -148,7 +149,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, ce
           </svg>
         </div>
       </div>
-      <button type="button" className="route-start-button" onClick={() => scrollRef.current?.scrollTo({ left: 0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' })}>← せんとうへ もどる</button>
+      <button type="button" className="route-start-button icon-button" onClick={() => scrollRef.current?.scrollTo({ left: 0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' })}><MaterialIcon name="first_page" />せんとうへ もどる</button>
     </div>
   )
 }

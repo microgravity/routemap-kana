@@ -47,6 +47,12 @@
 
 初期駅で使う全文字にSVGがあることは自動テストで確認します。親が追加した未対応文字にはこのデータを推測適用せず、端末のフォント見本と自由書きを提供します。
 
+## 操作アイコン
+
+戻る、音声、手書き、設定、保存などの操作アイコンには、Google Fontsの[Material Symbols](https://developers.google.com/fonts/docs/material_symbols) Rounded 400を使用しています。npmパッケージ`@material-symbols/font-400` version 0.47.1のフォントをアプリ内へ同梱し、外部CDNへ依存せずオフライン時も表示します。
+
+Material SymbolsはApache License 2.0です。著作権・ライセンス通知全文: [`licenses/material-symbols-LICENSE.txt`](../licenses/material-symbols-LICENSE.txt)
+
 ## GitHub Pages
 
 公開workflowはGitHub公式資料に沿っています。

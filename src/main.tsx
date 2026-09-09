@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './app/App'
 import { AppStateProvider } from './app/AppState'
 import { registerServiceWorker } from './services/pwa/registerServiceWorker'
+import '@material-symbols/font-400/rounded.css'
 import './styles/main.css'
 
 if (import.meta.env.PROD) registerServiceWorker()

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { completedStationCount, routeAchievementLevel, type RouteAchievement } from '../domain/progress'
 import { RouteMap } from '../features/route-map/RouteMap'
@@ -136,7 +137,7 @@ export function HomePage() {
         <Link className="kana-search-link" to="/kana">
           <span className="kana-search-sample" aria-hidden="true">あ</span>
           <span><strong>ひらがなから さがす</strong><small>もじを おして、えきを みつけよう</small></span>
-          <i aria-hidden="true">→</i>
+          <MaterialIcon name="arrow_forward" />
         </Link>
 
         <section className={`map-card ${selectedProgress.achievement !== 'none' ? `map-card--${selectedProgress.achievement}` : ''}`} aria-labelledby="map-heading">
@@ -151,9 +152,9 @@ export function HomePage() {
                 <button type="button" className={mode === 'mine' ? 'selected' : ''} onClick={() => setMode('mine')}>じぶんの えき</button>
               </div>
               <div className="zoom-controls" aria-label="ろせんずの おおきさ">
-                <button type="button" aria-label="ちいさくする" onClick={() => setZoom((value) => Math.max(.85, value - .15))}>−</button>
-                <button type="button" onClick={() => { setZoom(.85); setMapResetKey((value) => value + 1) }}>ぜんたいを みる</button>
-                <button type="button" aria-label="おおきくする" onClick={() => setZoom((value) => Math.min(1.45, value + .15))}>＋</button>
+                <button type="button" aria-label="ちいさくする" onClick={() => setZoom((value) => Math.max(.85, value - .15))}><MaterialIcon name="zoom_out" /></button>
+                <button type="button" className="icon-button" onClick={() => { setZoom(.85); setMapResetKey((value) => value + 1) }}><MaterialIcon name="fit_screen" />ぜんたいを みる</button>
+                <button type="button" aria-label="おおきくする" onClick={() => setZoom((value) => Math.min(1.45, value + .15))}><MaterialIcon name="zoom_in" /></button>
               </div>
             </div>
           </div>
@@ -224,7 +225,7 @@ export function HomePage() {
                     ? '★ ぜんぶ かけた！'
                     : `${selectedProgress.completed} / ${selectedProgress.stationIds.length} えき かけた`}
               </span>
-              {selectedProgress.achievement !== 'none' && <button type="button" className="route-celebration-button" onClick={replaySelectedRouteCelebration}>おいわいを みる</button>}
+              {selectedProgress.achievement !== 'none' && <button type="button" className="route-celebration-button icon-button" onClick={replaySelectedRouteCelebration}><MaterialIcon name="celebration" filled />おいわいを みる</button>}
             </div>
             <progress
               value={selectedProgress.completed}
@@ -300,11 +301,11 @@ export function HomePage() {
             </p>
             {activeRouteCelebration.level === 'master' && <p className="route-reward-master-copy">おてほんなしで ぜんえき クリア！</p>}
             <div className="route-reward-actions">
-              <button type="button" className="soft-button" onClick={() => setRouteCelebrationReplayKey((value) => value + 1)}>もういちど おいわい</button>
+              <button type="button" className="soft-button icon-button" onClick={() => setRouteCelebrationReplayKey((value) => value + 1)}><MaterialIcon name="replay" />もういちど おいわい</button>
               {routeCelebrationIndex < routeCelebrations.length - 1
-                ? <button type="button" className="soft-button" onClick={showNextCelebration}>つぎの おいわい</button>
-                : <button type="button" className="soft-button" onClick={goToNextRoute}>つぎの ろせんへ</button>}
-              <button type="button" className="primary-button" onClick={dismissRouteCelebration}>ろせんずを みる</button>
+                ? <button type="button" className="soft-button icon-button" onClick={showNextCelebration}><MaterialIcon name="skip_next" />つぎの おいわい</button>
+                : <button type="button" className="soft-button icon-button" onClick={goToNextRoute}><MaterialIcon name="arrow_forward" />つぎの ろせんへ</button>}
+              <button type="button" className="primary-button icon-button" onClick={dismissRouteCelebration}><MaterialIcon name="route" />ろせんずを みる</button>
             </div>
           </div>
         </div>

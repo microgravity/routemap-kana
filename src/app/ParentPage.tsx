@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperators, routes } from '../data/stations'
 import { hasGlyph } from '../data/kana'
 import { isHiraganaReading, normalizeReading, splitKana } from '../domain/kana'
@@ -126,11 +127,14 @@ export function ParentPage() {
     <div className="page-shell parent-page">
       <AppHeader compact />
       <main className="parent-main">
-        <Link className="back-link" to="/">← ろせんず</Link>
+        <Link className="back-link" to="/"><MaterialIcon name="arrow_back" />ろせんず</Link>
         <div className="parent-title">
-          <div>
-            <p className="eyebrow">保護者向け</p>
-            <h1>おうちのひと</h1>
+          <div className="parent-title-heading">
+            <span className="parent-title-icon"><MaterialIcon name="settings" filled /></span>
+            <div>
+              <p className="eyebrow">保護者向け</p>
+              <h1>おうちのひと</h1>
+            </div>
           </div>
           <p>この入口は誤操作を減らすためのものです。認証やセキュリティ機能ではありません。</p>
         </div>
@@ -139,7 +143,7 @@ export function ParentPage() {
         <div className="parent-grid">
           <section className="parent-card" aria-labelledby="settings-title">
             <p className="card-number">01</p>
-            <h2 id="settings-title">使いかた</h2>
+            <h2 id="settings-title" className="icon-heading"><MaterialIcon name="tune" />使いかた</h2>
             <fieldset>
               <legend>利き手</legend>
               <label className="choice"><input type="radio" name="hand" checked={state.settings.handedness === 'left'} onChange={() => updateSettings({ handedness: 'left' })} /> 左利き</label>
@@ -176,7 +180,7 @@ export function ParentPage() {
 
           <section className="parent-card parent-card--wide" aria-labelledby="station-editor-title">
             <p className="card-number">02</p>
-            <h2 id="station-editor-title">駅を追加・編集</h2>
+            <h2 id="station-editor-title" className="icon-heading"><MaterialIcon name="edit" />駅を追加・編集</h2>
             <label className="field">
               <span>編集する駅</span>
               <select value={editingId} onChange={(event) => { setEditingId(event.target.value); setStatus('') }}>
@@ -213,25 +217,25 @@ export function ParentPage() {
                 </div>
               )}
               <div className="form-actions">
-                <button type="button" className="soft-button" disabled={!normalizedReading || !available} onClick={() => speak(speechText || normalizedReading)}>♪ 試しに聞く</button>
-                <button type="submit" className="primary-button" disabled={!canSave}>駅を保存</button>
-                {editingStation?.builtIn && state.stationOverrides[editingStation.id] && <button type="button" className="text-button" onClick={() => { resetBuiltInStation(editingStation.id); setStatus('組み込み駅を初期値に戻しました。') }}>初期値に戻す</button>}
-                {editingStation && !editingStation.builtIn && <button type="button" className="danger-text" onClick={() => { if (window.confirm(`${editingStation.displayName}を削除しますか？`)) { deleteCustomStation(editingStation.id); setEditingId('new'); setStatus('追加駅を削除しました。') } }}>この追加駅を削除</button>}
+                <button type="button" className="soft-button icon-button" disabled={!normalizedReading || !available} onClick={() => speak(speechText || normalizedReading)}><MaterialIcon name="volume_up" />試しに聞く</button>
+                <button type="submit" className="primary-button icon-button" disabled={!canSave}><MaterialIcon name="save" filled />駅を保存</button>
+                {editingStation?.builtIn && state.stationOverrides[editingStation.id] && <button type="button" className="text-button icon-button" onClick={() => { resetBuiltInStation(editingStation.id); setStatus('組み込み駅を初期値に戻しました。') }}><MaterialIcon name="restart_alt" />初期値に戻す</button>}
+                {editingStation && !editingStation.builtIn && <button type="button" className="danger-text icon-button" onClick={() => { if (window.confirm(`${editingStation.displayName}を削除しますか？`)) { deleteCustomStation(editingStation.id); setEditingId('new'); setStatus('追加駅を削除しました。') } }}><MaterialIcon name="delete_forever" />この追加駅を削除</button>}
               </div>
             </form>
           </section>
 
           <section className="parent-card parent-card--wide" aria-labelledby="data-title">
             <p className="card-number">03</p>
-            <h2 id="data-title">保存とバックアップ</h2>
+            <h2 id="data-title" className="icon-heading"><MaterialIcon name="storage" />保存とバックアップ</h2>
             <p>データはこのブラウザ内に保存されます。ブラウザデータの削除などで失われる場合があり、他の端末とは自動で同期しません。</p>
             <div className="data-actions">
-              <button type="button" className="soft-button" onClick={exportBackup}>↓ JSONを書き出す</button>
-              <button type="button" className="soft-button" onClick={() => fileInputRef.current?.click()}>↑ JSONから復元</button>
+              <button type="button" className="soft-button icon-button" onClick={exportBackup}><MaterialIcon name="download" />JSONを書き出す</button>
+              <button type="button" className="soft-button icon-button" onClick={() => fileInputRef.current?.click()}><MaterialIcon name="upload" />JSONから復元</button>
               <input ref={fileInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={importBackup} />
             </div>
             <p className="import-note">復元は現在の設定・進捗・追加駅をすべて置き換えます。復元前に、現在のJSONを書き出してください。</p>
-            <button type="button" className="danger-button" onClick={() => { if (window.confirm('設定、進捗、追加した駅をすべて消します。元に戻せません。よろしいですか？')) { clearAll(); setEditingId('new'); setStatus('すべての端末内データを消去しました。') } }}>すべてのデータを消す</button>
+            <button type="button" className="danger-button icon-button" onClick={() => { if (window.confirm('設定、進捗、追加した駅をすべて消します。元に戻せません。よろしいですか？')) { clearAll(); setEditingId('new'); setStatus('すべての端末内データを消去しました。') } }}><MaterialIcon name="delete_forever" />すべてのデータを消す</button>
           </section>
         </div>
       </main>

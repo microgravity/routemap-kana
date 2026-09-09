@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
 import { routes, stationCodeForRoute } from '../data/stations'
 import { normalizeReading, splitKana } from '../domain/kana'
@@ -29,7 +30,7 @@ export function KanaIndexPage() {
     <div className={`page-shell kana-index-page ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
       <AppHeader compact />
       <main className="kana-index-main">
-        <Link className="back-link" to={selectedKana ? '/kana' : '/'}>{selectedKana ? '← もじの ひょう' : '← ろせんず'}</Link>
+        <Link className="back-link" to={selectedKana ? '/kana' : '/'}><MaterialIcon name="arrow_back" />{selectedKana ? 'もじの ひょう' : 'ろせんず'}</Link>
         {selectedKana ? (
           <section aria-labelledby="kana-results-title">
             <div className="kana-results-heading">
@@ -65,9 +66,10 @@ export function KanaIndexPage() {
                         <button
                           key={position}
                           type="button"
+                          className="icon-button"
                           onClick={() => navigate(`/practice/${station.id}/${position}?route=${primaryRouteId}`)}
                         >
-                          <span aria-hidden="true">✎</span>
+                          <MaterialIcon name="draw" />
                           {match.positions.length > 1 ? `${occurrenceIndex + 1}こめの「${selectedKana}」を かく` : `この「${selectedKana}」を かく`}
                         </button>
                       ))}
@@ -83,7 +85,7 @@ export function KanaIndexPage() {
               <p className="eyebrow">もじを おして みつけよう</p>
               <h1 id="kana-index-title">ひらがなから さがす</h1>
               <p>えきの なまえに ある もじは、おせるよ。</p>
-              <p className="kana-practice-legend"><i aria-hidden="true">✓</i> れんしゅうした もじ</p>
+              <p className="kana-practice-legend"><MaterialIcon name="check" />れんしゅうした もじ</p>
             </div>
             <KanaTable title="ごじゅうおん" rows={basicKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
             <div className="kana-extra-grid">
@@ -116,7 +118,7 @@ function KanaTable({ title, rows, index, practicedKana, onChoose }: { title: str
               aria-label={`${kana}、${count}この えき${practiced ? '、れんしゅうした' : ''}`}
               onClick={() => onChoose(kana)}
             >
-              <strong>{kana}</strong><small>{count}</small>{practiced && <span className="kana-practiced-mark" aria-hidden="true">✓</span>}
+              <strong>{kana}</strong><small>{count}</small>{practiced && <MaterialIcon name="check" className="kana-practiced-mark" />}
             </button>
           )
         }))}

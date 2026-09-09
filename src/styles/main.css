@@ -33,6 +33,32 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 button { color: inherit; }
 
+.material-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  font-size: 1.35em;
+  line-height: 1;
+  vertical-align: -.15em;
+  font-variation-settings: "FILL" 0;
+}
+
+.material-icon--filled { font-variation-settings: "FILL" 1; }
+
+.icon-button, .icon-heading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.icon-heading { justify-content: flex-start; }
+.icon-heading .material-icon { color: #87654e; }
+.icon-button .material-icon { margin: 0; }
+
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
   outline: 4px solid #2b7de9;
   outline-offset: 3px;
@@ -110,6 +136,7 @@ body.is-writing {
   column-gap: 8px;
 }
 
+.parent-entry .material-icon { color: #87654e; font-size: 1.4rem; }
 .parent-entry small { grid-column: 2; color: var(--muted); font-size: .7rem; }
 
 .home-main, .station-main, .practice-main, .parent-main { padding: 8px clamp(16px, 4vw, 54px) max(48px, env(safe-area-inset-bottom)); }
@@ -156,7 +183,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .kana-search-link > span:nth-child(2) { display: grid; gap: 3px; }
 .kana-search-link strong { font-size: 1.16rem; }
 .kana-search-link small { color: var(--muted); font-weight: 700; }
-.kana-search-link > i { margin-left: auto; font-size: 1.7rem; font-style: normal; }
+.kana-search-link > .material-icon { margin-left: auto; color: #3d8b83; font-size: 1.7rem; }
 
 .map-heading-row {
   padding: clamp(20px, 3vw, 32px) clamp(22px, 3.5vw, 42px) 12px;
@@ -315,7 +342,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .found-list span { color: var(--muted); font-size: .78rem; }
 
 .station-main { max-width: 1040px; margin: auto; }
-.back-link { min-height: 50px; display: inline-flex; align-items: center; color: #536766; font-weight: 900; text-decoration: none; }
+.back-link { min-height: 50px; display: inline-flex; align-items: center; gap: 5px; color: #536766; font-weight: 900; text-decoration: none; }
 .station-card { position: relative; min-height: 620px; padding: clamp(34px, 5vw, 72px); text-align: center; overflow: hidden; }
 .station-sign { position: absolute; left: 0; right: 0; top: 0; height: 15px; background: var(--aqua); display: flex; justify-content: space-between; }
 .station-sign span { width: 9%; background: var(--yellow); }
@@ -432,6 +459,9 @@ h1, h2, p { overflow-wrap: anywhere; }
 
 .parent-main { max-width: 1120px; margin: auto; }
 .parent-title { margin: 12px 0 24px; display: flex; align-items: end; justify-content: space-between; gap: 30px; }
+.parent-title-heading { display: flex; align-items: center; gap: 16px; }
+.parent-title-icon { width: 62px; height: 62px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 19px; background: #e7f4ed; color: #3d8178; }
+.parent-title-icon .material-icon { font-size: 2rem; }
 .parent-title h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin: 2px 0 0; }
 .parent-title > p { max-width: 500px; color: var(--muted); font-size: .88rem; }
 .parent-grid { display: grid; grid-template-columns: minmax(260px, .75fr) minmax(440px, 1.55fr); gap: 20px; align-items: start; }
@@ -475,7 +505,8 @@ h1, h2, p { overflow-wrap: anywhere; }
 .kana-index-heading h1, .kana-results-heading h1 { margin: 3px 0 8px; font-size: clamp(2rem, 5vw, 3.5rem); }
 .kana-index-heading > p:not(.eyebrow):not(.kana-practice-legend), .kana-results-heading p { color: var(--muted); font-weight: 700; }
 .kana-practice-legend { width: fit-content; margin: 13px 0 0; padding: 7px 12px; border-radius: 999px; background: #e2f3e8; color: #2f6953; font-size: .78rem; font-weight: 900; }
-.kana-practice-legend i { width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%; background: #49a48a; color: white; font-style: normal; }
+.kana-practice-legend { display: inline-flex; align-items: center; gap: 6px; }
+.kana-practice-legend .material-icon { width: 20px; height: 20px; border-radius: 50%; background: #49a48a; color: white; font-size: .9rem; }
 .kana-table-card { margin-bottom: 22px; padding: clamp(18px, 3vw, 30px); border: 1px solid rgba(118, 108, 83, .16); border-radius: 28px; background: rgba(255, 253, 247, .94); box-shadow: var(--shadow); }
 .kana-table-card h2 { margin: 0 0 16px; font-size: 1.3rem; letter-spacing: .08em; }
 .kana-table { display: grid; grid-template-columns: repeat(5, minmax(52px, 1fr)); gap: clamp(6px, 1vw, 11px); }
