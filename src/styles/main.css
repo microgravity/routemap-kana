@@ -767,7 +767,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 }
 
 @media (max-width: 520px) {
-  .brand > span:last-child, .profile-entry span, .parent-entry-label, .parent-entry small { display: none; }
+  .brand > span:last-child, .profile-entry-label, .parent-entry-label, .parent-entry small { display: none; }
   .profile-entry, .parent-entry { width: 52px; min-height: 52px; padding: 0; place-items: center; }
   .parent-entry { display: grid; grid-template-columns: 1fr; }
   .profile-hero { grid-template-columns: 1fr; }

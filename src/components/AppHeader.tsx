@@ -25,7 +25,7 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
       </Link>
       {!compact && (
         <div className="header-actions">
-          <Link to="/profile" className="profile-entry"><MaterialIcon name="account_circle" filled /><span>わたしの きろく</span></Link>
+          <Link to="/profile" className="profile-entry"><MaterialIcon name="account_circle" filled /><span className="profile-entry-label">わたしの きろく</span></Link>
           <button
             type="button"
             className="parent-entry"
