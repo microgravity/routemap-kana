@@ -20,8 +20,10 @@ describe('検索エンジン向け公開ファイル', () => {
     expect(html).toContain('<meta name="google-site-verification" content="V6TzJNON6Z1xpYZuBENcSDgeKAh4MYP_4fwsMaSqKj0" />')
   })
 
-  it('同意前にGTMを読み込むタグを公開HTMLへ直書きしない', () => {
-    expect(html).not.toContain('googletagmanager.com/gtm.js')
+  it('GTMをすべての訪問で読み込む', () => {
+    expect(html).toContain('googletagmanager.com/gtm.js?id=')
+    expect(html).toContain('googletagmanager.com/ns.html?id=GTM-MXG5B2NT')
+    expect(html).toContain("'GTM-MXG5B2NT'")
     expect(html).not.toContain('G-CVGD2ZHNYD')
   })
 })

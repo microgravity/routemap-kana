@@ -515,11 +515,6 @@ h1, h2, p { overflow-wrap: anywhere; }
 .range-field input { width: 100%; height: 38px; accent-color: #338e82; }
 .range-field output { color: var(--muted); }
 .toggle { min-height: 50px; display: flex; align-items: center; gap: 10px; font-weight: 700; }
-.parent-card .analytics-settings { margin: 18px 0 0; padding: 16px; border: 2px solid #dbe9e4; border-radius: 16px; background: #f4faf7; }
-.analytics-settings legend { padding: 0 8px; color: #336c62; }
-.analytics-settings p { margin: 0 0 8px; color: var(--muted); font-size: .78rem; line-height: 1.7; }
-.analytics-settings small { display: block; color: var(--muted); font-size: .7rem; line-height: 1.6; }
-.analytics-settings a { color: #336c62; text-underline-offset: 2px; }
 .station-form { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .field { display: block; }
 .field:first-child { grid-column: 1 / -1; }

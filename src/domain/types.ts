@@ -69,7 +69,6 @@ export interface AppSettings {
   volume: number
   muted: boolean
   reduceMotion: boolean
-  analyticsEnabled: boolean
 }
 
 export interface PersistedState {

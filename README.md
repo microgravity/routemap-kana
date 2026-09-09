@@ -30,7 +30,7 @@
 - 路線全駅クリア時の全線点灯・電車走行・記念カードと、いつでも再生できる路線メダル
 - 全駅をお手本なしで書いた路線の上位称号「ろせんマスター」
 - 左利き・右利き、音声、動きを減らす設定
-- 保護者が許可した場合だけ読み込む、初期オフのアクセス解析
+- 全訪問で読み込むGoogle Tag Manager経由のアクセス解析
 - カスタム駅の追加・編集と既存路線への手動挿入
 - 検証つきJSONバックアップ・置換復元
 - ホーム画面からアプリ表示で起動できるPWA・オフライン再起動
@@ -79,12 +79,12 @@ workflowはPages設定から`base_path`を取得するため、`/<repository>/`�
 
 ### Google Search Console / Tag Manager / Analytics
 
-- Search ConsoleのURLプレフィックスは `https://microgravity.github.io/routemap-kana/` です。`index.html`にHTMLタグ方式の所有権確認タグを収録しています。公開後に所有権を確認し、`https://microgravity.github.io/routemap-kana/sitemap.xml`を送信します。
+- Search ConsoleのURLプレフィックスは `https://microgravity.github.io/routemap-kana/` です。`index.html`にHTMLタグ方式の所有権確認タグを収録し、2026-09-09に所有権確認済みです。`https://microgravity.github.io/routemap-kana/sitemap.xml`を送信します。
 - GTMコンテナは `GTM-MXG5B2NT` です。Google Analyticsの測定ID `G-CVGD2ZHNYD` はGTM側のGoogleタグへ設定し、コンテナを公開します。GAをサイトへ直接重複設置しません。
-- GTMは「おうちのひと」で「アクセス解析を許可」がオンになった本番環境だけで読み込みます。初期設定はオフで、許可前はGTM・GAへ通信しません。広告関連の同意は常に拒否します。
+- GTMは保護者同意の設定を介さず、すべての訪問で読み込みます。計測可否や同意モードが必要になった場合は、GTM側の設定またはサイトのプライバシー設計を合わせて見直します。
 - ハッシュ形式の画面遷移は、GA4の拡張計測にあるブラウザ履歴に基づくページ変更を有効にして計測します。GTM側で別の履歴変更タグも追加する場合は、`page_view`の二重計測にならないよう片方だけを使用します。
 
-GTMのプレビューまたはTag Assistantで、許可オフ時にコンテナが読み込まれないこと、許可オン後にGoogleタグが一度だけ発火すること、画面移動時に`page_view`が一件ずつ届くことを確認します。
+GTMのプレビューまたはTag Assistantで、最初の表示時にGoogleタグが一度だけ発火すること、画面移動時に`page_view`が一件ずつ届くことを確認します。
 
 更新時は`main`へpushすると、型検査、重要テスト、本番ビルド、Pages公開が順に実行されます。公開先リポジトリとURLはこのソース内に決め打ちしていません。
 

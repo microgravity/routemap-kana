@@ -178,18 +178,6 @@ export function ParentPage() {
             </label>
             <label className="toggle"><input type="checkbox" checked={state.settings.muted} onChange={(event) => updateSettings({ muted: event.target.checked })} /> 音声をミュート</label>
             <label className="toggle"><input type="checkbox" checked={state.settings.reduceMotion} onChange={(event) => updateSettings({ reduceMotion: event.target.checked })} /> 動きを減らす</label>
-            <fieldset className="analytics-settings">
-              <legend className="icon-heading"><MaterialIcon name="analytics" />利用状況の計測</legend>
-              <p>許可した場合だけ、画面URLや端末情報などをGoogle Analyticsへ送ります。筆跡や追加した駅名を送る処理はありません。</p>
-              <label className="toggle">
-                <input type="checkbox" checked={state.settings.analyticsEnabled} onChange={(event) => updateSettings({ analyticsEnabled: event.target.checked })} />
-                アクセス解析を許可
-              </label>
-              <small>
-                初期設定はオフです。いつでもここで変更できます。{' '}
-                <a href="https://policies.google.com/privacy?hl=ja" target="_blank" rel="noreferrer">Googleのプライバシーポリシー</a>
-              </small>
-            </fieldset>
           </section>
 
           <section className="parent-card parent-card--wide" aria-labelledby="station-editor-title">

@@ -42,12 +42,6 @@ describe('バックアップ検証', () => {
     expect(parseBackup(JSON.stringify(oldState)).settings.traceStrictness).toBe('standard')
   })
 
-  it('解析許可がない旧データを許可なしで読み込む', () => {
-    const oldState = JSON.parse(serializeBackup(defaultState()))
-    delete oldState.settings.analyticsEnabled
-    expect(parseBackup(JSON.stringify(oldState)).settings.analyticsEnabled).toBe(false)
-  })
-
   it('解除記録がない旧データを未解除の状態で読み込む', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
     delete oldState.unlockedMilestones
