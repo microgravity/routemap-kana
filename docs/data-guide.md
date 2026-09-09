@@ -12,9 +12,9 @@
 
 ## 組み込み駅・路線を変更する
 
-東急・相鉄の組み込み駅は[`src/data/stations.ts`](../src/data/stations.ts)、東京メトロは[`src/data/tokyoMetro.ts`](../src/data/tokyoMetro.ts)にあります。会社や路線が増える場合は会社単位でファイルを分け、`stations.ts`で統合します。
+組み込み駅・路線は東急、相鉄、東京メトロの会社別ファイルに分け、[`src/data/stations.ts`](../src/data/stations.ts)で統合します。全国追加時の分割単位、固有ID、共有駅の規則は[`railway-data-architecture.md`](railway-data-architecture.md)を参照してください。
 
-- `Station.id`は駅名や配列位置から作らず、公開後は変更しません。
+- `Station.id`は駅名や配列位置から作らず、公開後は変更しません。新規会社は`nationwideRailwayId`で全国版IDを生成します。
 - 読みはUnicode NFCのひらがなにします。
 - 同じ実在駅を複数路線で使う場合は同じ駅IDを共有します。
 - `Route.orderedStationIds`が隣接関係と電車演出の根拠です。

@@ -1,7 +1,10 @@
-import type { Route, Station } from '../domain/types'
-import { metroRouteUnlockMilestoneId } from '../domain/unlocks'
+import type { RailwayOperator, Route, Station } from '../domain/types'
+import { metroRouteUnlockMilestoneId, TOKYO_METRO_UNLOCK_MILESTONE_ID } from '../domain/unlocks'
+import type { RailwayDataset } from './railwayCatalogTypes'
 
 export const TOKYO_METRO_SOURCE = 'https://www.tokyometro.jp/station/'
+export const TOKYO_METRO_ROUTE_COUNT = 9
+export const TOKYO_METRO_OFFICIAL_STATION_COUNT = 180
 
 function metroStation(id: string, displayName: string, reading: string): Station {
   return { id, displayName, reading, builtIn: true, sourceUrl: TOKYO_METRO_SOURCE }
@@ -223,3 +226,14 @@ export const tokyoMetroRoutes: Route[] = [
     sourceUrl: 'https://www.tokyometro.jp/station/line_fukutoshin/index.html',
   },
 ]
+
+export const tokyoMetroOperator: RailwayOperator = {
+  id: 'tokyo-metro', name: 'とうきょうメトロ', displayName: '東京地下鉄', shortName: 'とうきょうメトロ',
+  color: '#149b95', routeIds: tokyoMetroRoutes.map((route) => route.id), sourceUrl: TOKYO_METRO_SOURCE,
+  unlockMilestoneId: TOKYO_METRO_UNLOCK_MILESTONE_ID,
+}
+
+export const tokyoMetroDataset: RailwayDataset = {
+  datasetId: 'jp.dataset.tokyo-metro', idScheme: 'legacy-v1', operator: tokyoMetroOperator,
+  stations: tokyoMetroStations, routes: tokyoMetroRoutes, officialStationCount: TOKYO_METRO_OFFICIAL_STATION_COUNT,
+}
