@@ -14,6 +14,7 @@ import {
   routes,
 } from './stations'
 import { isHiraganaReading } from '../domain/kana'
+import { metroRouteUnlockMilestoneId, TOKYO_METRO_CHOICE_ROUTE_IDS, TOKYO_METRO_STARTER_ROUTE_IDS } from '../domain/unlocks'
 import { tokyoMetroStations } from './tokyoMetro'
 
 const expectedRoutes = [
@@ -92,6 +93,15 @@ describe('鉄道会社・路線・駅データ', () => {
     expect(builtInStationById.get(route.orderedStationIds[0])?.displayName).toBe(first)
     expect(builtInStationById.get(route.orderedStationIds.at(-1)!)?.displayName).toBe(last)
     expect(route.orderedStationIds.every((id) => builtInStationById.has(id))).toBe(true)
+  })
+
+  it('東京メトロは2路線を初期開放し、残り7路線を選択解除にする', () => {
+    for (const routeId of TOKYO_METRO_STARTER_ROUTE_IDS) {
+      expect(routes.find((route) => route.id === routeId)?.unlockMilestoneId).toBeUndefined()
+    }
+    for (const routeId of TOKYO_METRO_CHOICE_ROUTE_IDS) {
+      expect(routes.find((route) => route.id === routeId)?.unlockMilestoneId).toBe(metroRouteUnlockMilestoneId(routeId))
+    }
   })
 
   it('東京メトロの185路線別駅所属を144駅へ統合し読みをひらがなで保持する', () => {

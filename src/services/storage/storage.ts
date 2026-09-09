@@ -7,6 +7,7 @@ import type {
   PracticeProgress,
   StationOverride,
 } from '../../domain/types'
+import { UNLOCK_SYSTEM_VERSION } from '../../domain/unlocks'
 
 export const STORAGE_KEY = 'jibun-no-rosenzu:v1'
 export const MAX_IMPORT_BYTES = 512 * 1024
@@ -23,6 +24,7 @@ export const defaultSettings: AppSettings = {
 export function defaultState(): PersistedState {
   return {
     schemaVersion: 1,
+    unlockSystemVersion: UNLOCK_SYSTEM_VERSION,
     settings: { ...defaultSettings },
     customStations: [],
     stationOverrides: {},
@@ -131,8 +133,10 @@ export function parseBackup(text: string): PersistedState {
   }
   if (!isRecord(raw) || raw.schemaVersion !== 1) throw new Error('たいおうしていない データのバージョンです')
   const settings = validateSettings(raw.settings)
+  const unlockSystemVersion = raw.unlockSystemVersion === undefined ? 1 : raw.unlockSystemVersion
   const unlockedMilestonesRaw = raw.unlockedMilestones ?? []
   if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)
+    || !Number.isInteger(unlockSystemVersion) || (unlockSystemVersion as number) < 1 || (unlockSystemVersion as number) > UNLOCK_SYSTEM_VERSION
     || !Array.isArray(unlockedMilestonesRaw)
     || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)) {
     throw new Error('データの かたちが ただしくありません')
@@ -175,6 +179,7 @@ export function parseBackup(text: string): PersistedState {
 
   return {
     schemaVersion: 1,
+    unlockSystemVersion: unlockSystemVersion as number,
     settings,
     customStations,
     stationOverrides,

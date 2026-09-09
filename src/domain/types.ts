@@ -73,6 +73,7 @@ export interface AppSettings {
 
 export interface PersistedState {
   schemaVersion: 1
+  unlockSystemVersion: number
   settings: AppSettings
   customStations: CustomStation[]
   stationOverrides: Record<string, StationOverride>

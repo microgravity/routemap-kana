@@ -1,4 +1,4 @@
-import { completeFreeWrittenPosition, completePosition, completedStationCount, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, practicedKanaSet, reconcileProgress, routeAchievementLevel } from './progress'
+import { completeFreeWrittenPosition, completePosition, completedStationCount, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, practicedKanaSet, reconcileProgress, routeAchievementLevel, routeEffortProgress } from './progress'
 import type { Station } from './types'
 
 describe('練習進捗', () => {
@@ -75,6 +75,22 @@ describe('練習進捗', () => {
     expect(routeAchievementLevel(['one', 'two'], stations, partial)).toBe('none')
     expect(routeAchievementLevel(['one', 'two'], stations, complete)).toBe('complete')
     expect(routeAchievementLevel(['one', 'two'], stations, master)).toBe('master')
+  })
+
+  it('駅数ではなく練習した文字位置から路線の途中進捗を算出する', () => {
+    const stations = new Map<string, Station>([
+      ['short', { id: 'short', displayName: '短', reading: 'あ', builtIn: true }],
+      ['long', { id: 'long', displayName: '長', reading: 'かきく', builtIn: true }],
+    ])
+    const progress = {
+      short: completePosition(freshProgress('あ'), 0),
+      long: completePosition(freshProgress('かきく'), 0),
+    }
+    expect(routeEffortProgress(['short', 'long', 'short'], stations, progress)).toEqual({
+      practicedPositions: 2,
+      totalPositions: 4,
+      ratio: 0.5,
+    })
   })
 
   it('未完了からクリア、通常クリアからマスターへの変化だけを通知する', () => {

@@ -3,7 +3,7 @@ import { builtInStations, routes } from '../data/stations'
 import { normalizeReading } from '../domain/kana'
 import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import type { AppSettings, AppState, CustomStation, PersistedState, Station, StationOverride } from '../domain/types'
-import { grantEarnedMilestones } from '../domain/unlocks'
+import { grantEarnedMilestones, grantMetroRouteChoice, migrateUnlockMilestones, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
 interface AppStateValue {
@@ -14,6 +14,7 @@ interface AppStateValue {
   routeStationIds: (routeId: string) => string[]
   updateSettings: (patch: Partial<AppSettings>) => void
   markPositionComplete: (stationId: string, position: number, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; unlockedMilestones: string[] }
+  unlockRoute: (routeId: string) => void
   setCurrentPosition: (stationId: string, position: number) => void
   saveStation: (station: CustomStation | Station, routeId?: string | null, insertAfterStationId?: string | null) => void
   deleteCustomStation: (stationId: string) => void
@@ -27,10 +28,13 @@ const Context = createContext<AppStateValue | null>(null)
 function withEarnedMilestones(state: AppState): AppState {
   const stations = builtInStations.map((station) => ({ ...station, ...state.stationOverrides[station.id] }))
   const stationById = new Map(stations.map((station) => [station.id, station]))
-  const unlockedMilestones = grantEarnedMilestones(state.unlockedMilestones, { routes, stationById, progress: state.progress })
-  return unlockedMilestones.length === state.unlockedMilestones.length
+  const unlockedMilestones = grantEarnedMilestones(
+    migrateUnlockMilestones(state.unlockedMilestones, state.unlockSystemVersion),
+    { routes, stationById, progress: state.progress },
+  )
+  return unlockedMilestones.length === state.unlockedMilestones.length && state.unlockSystemVersion === UNLOCK_SYSTEM_VERSION
     ? state
-    : { ...state, unlockedMilestones }
+    : { ...state, unlockSystemVersion: UNLOCK_SYSTEM_VERSION, unlockedMilestones }
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
@@ -105,7 +109,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       })
     })
     return result
-  }, [routeStationIds, state.progress, stationById])
+  }, [routeStationIds, state.progress, state.unlockedMilestones, stationById])
 
   const setCurrentPosition = useCallback((stationId: string, position: number) => {
     const station = stationById.get(stationId)
@@ -115,6 +119,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return { ...current, progress: { ...current.progress, [stationId]: { ...progress, currentPosition: position } } }
     })
   }, [stationById])
+
+  const unlockRoute = useCallback((routeId: string) => {
+    setState((current) => {
+      const earned = withEarnedMilestones(current)
+      const unlockedMilestones = grantMetroRouteChoice(earned.unlockedMilestones, routeId)
+      return unlockedMilestones.length === earned.unlockedMilestones.length
+        ? earned
+        : { ...earned, unlockedMilestones }
+    })
+  }, [])
 
   const saveStation = useCallback((station: CustomStation | Station, routeId?: string | null, insertAfterStationId?: string | null) => {
     setState((current) => {
@@ -176,6 +190,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     routeStationIds,
     updateSettings,
     markPositionComplete,
+    unlockRoute,
     setCurrentPosition,
     saveStation,
     deleteCustomStation,

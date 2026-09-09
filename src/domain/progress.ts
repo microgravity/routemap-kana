@@ -13,6 +13,12 @@ export interface RouteProgressDefinition {
   stationIds: string[]
 }
 
+export interface RouteEffortProgress {
+  practicedPositions: number
+  totalPositions: number
+  ratio: number
+}
+
 export function freshProgress(reading: string): PracticeProgress {
   return {
     readingSnapshot: readingVersion(reading),
@@ -92,6 +98,28 @@ export function completedStationCount(
     const station = stationById.get(stationId)
     return Boolean(station && isStationPracticed(progress[stationId], station.reading))
   }).length
+}
+
+export function routeEffortProgress(
+  stationIds: readonly string[],
+  stationById: ReadonlyMap<string, Station>,
+  progress: Record<string, PracticeProgress>,
+): RouteEffortProgress {
+  let practicedPositions = 0
+  let totalPositions = 0
+  for (const stationId of new Set(stationIds)) {
+    const station = stationById.get(stationId)
+    if (!station) continue
+    const length = splitKana(station.reading).length
+    const current = reconcileProgress(progress[stationId], station.reading)
+    totalPositions += length
+    practicedPositions += current.practicedPositions.filter((position) => position < length).length
+  }
+  return {
+    practicedPositions,
+    totalPositions,
+    ratio: totalPositions === 0 ? 0 : practicedPositions / totalPositions,
+  }
 }
 
 export function routeAchievementLevel(

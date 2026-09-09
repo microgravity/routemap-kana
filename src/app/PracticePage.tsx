@@ -7,7 +7,7 @@ import { railwayOperators, routes } from '../data/stations'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
 import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress, type RouteAchievement } from '../domain/progress'
-import { isRouteUnlocked } from '../domain/unlocks'
+import { isRouteUnlocked, routeCheckpointMilestoneById } from '../domain/unlocks'
 import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
 import { sampleGlyphGuide } from '../features/practice/sampleGlyphGuide'
@@ -114,6 +114,12 @@ export function PracticePage() {
       }
     }
     const result = markPositionComplete(station.id, index, activeMode === 'free' && freeWritingPassed)
+    const checkpoint = result.unlockedMilestones
+      .map((id) => routeCheckpointMilestoneById.get(id))
+      .find((milestone) => milestone?.routeId === routeId)
+    if (checkpoint) {
+      notice = `${notice ? `${notice}　` : ''}${Math.round(checkpoint.ratio * 100)}%！くかんスタンプを もらったよ！`
+    }
     setTraceMessage('')
     setAllowTraceOverride(false)
     setReward({ ...result, notice, freeWritingPassed })

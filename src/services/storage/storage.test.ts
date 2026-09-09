@@ -48,6 +48,12 @@ describe('バックアップ検証', () => {
     expect(parseBackup(JSON.stringify(oldState)).unlockedMilestones).toEqual([])
   })
 
+  it('段階解除の世代がない旧データを移行対象として読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    delete oldState.unlockSystemVersion
+    expect(parseBackup(JSON.stringify(oldState)).unlockSystemVersion).toBe(1)
+  })
+
   it('一度獲得した解除記録をバックアップで保持する', () => {
     const state = defaultState()
     state.unlockedMilestones.push('tokyo-metro-unlock-v1')

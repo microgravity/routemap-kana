@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
-import { completedStationCount, routeAchievementLevel, type RouteAchievement } from '../domain/progress'
-import { isOperatorUnlocked, isRouteUnlocked, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
+import { completedStationCount, routeAchievementLevel, routeEffortProgress, type RouteAchievement } from '../domain/progress'
+import { isOperatorUnlocked, isRouteUnlocked, metroUnlockStatus, ROUTE_CHECKPOINT_RATIOS, routeCheckpointMilestoneById, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
 import { RouteMap } from '../features/route-map/RouteMap'
 import { useAppState } from './AppState'
 
@@ -21,7 +21,7 @@ export function HomePage() {
   const location = useLocation()
   const celebration = (location.state ?? {}) as CelebrationState
   const [params, setParams] = useSearchParams()
-  const { state, stationById, routeStationIds, storageWarning } = useAppState()
+  const { state, stationById, routeStationIds, storageWarning, unlockRoute } = useAppState()
   const [mode, setMode] = useState<'all' | 'mine'>('all')
   const [zoom, setZoom] = useState(1)
   const [mapResetKey, setMapResetKey] = useState(0)
@@ -40,18 +40,28 @@ export function HomePage() {
   })
   const selectedOperator = railwayOperatorById.get(selectedRoute.operatorId) ?? railwayOperators[0]
   const visibleRoutes = routes.filter((route) => route.operatorId === selectedOperator.id && isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+  const lockedMetroRoutes = selectedOperator.id === 'tokyo-metro'
+    ? routes.filter((route) => route.operatorId === 'tokyo-metro' && !isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+    : []
+  const metroStatus = metroUnlockStatus(state.unlockedMilestones)
   const routeCelebrations = manualRouteCelebration ? [manualRouteCelebration] : unlockedRouteCelebrations
   const activeRouteCelebration = routeCelebrationDismissed ? undefined : routeCelebrations[routeCelebrationIndex]
   const activeCelebrationRoute = routes.find((route) => route.id === activeRouteCelebration?.routeId)
   const newlyUnlockedOperator = railwayOperators.find((operator) => (
     operator.unlockMilestoneId && celebration.unlockedMilestones?.includes(operator.unlockMilestoneId)
   ))
+  const newlyEarnedCheckpoint = celebration.unlockedMilestones
+    ?.map((id) => routeCheckpointMilestoneById.get(id))
+    .find(Boolean)
   const routeProgress = useMemo(() => new Map(routes.map((route) => {
     const stationIds = routeStationIds(route.id)
+    const effort = routeEffortProgress(route.orderedStationIds, stationById, state.progress)
     return [route.id, {
       stationIds,
       completed: completedStationCount(stationIds, stationById, state.progress),
       achievement: routeAchievementLevel(stationIds, stationById, state.progress),
+      effort,
+      checkpoints: ROUTE_CHECKPOINT_RATIOS.filter((ratio) => effort.ratio >= ratio).length,
     }]
   })), [routeStationIds, state.progress, stationById])
   const operatorProgress = useMemo(() => new Map(railwayOperators.map((operator) => {
@@ -66,7 +76,10 @@ export function HomePage() {
       ? [[operator.id, calculateUnlockProgress(milestone, { routes, stationById, progress: state.progress })] as const]
       : []
   })), [state.progress, stationById])
-  const selectedProgress = routeProgress.get(selectedRoute.id) ?? { stationIds: [], completed: 0, achievement: 'none' as const }
+  const selectedProgress = routeProgress.get(selectedRoute.id) ?? {
+    stationIds: [], completed: 0, achievement: 'none' as const,
+    effort: { practicedPositions: 0, totalPositions: 0, ratio: 0 }, checkpoints: 0,
+  }
   const celebrationProgress = activeCelebrationRoute
     ? routeProgress.get(activeCelebrationRoute.id)
     : undefined
@@ -97,6 +110,14 @@ export function HomePage() {
       ? rememberedRouteId
       : availableRoutes.find((route) => route.operatorId === operatorId)?.id
     if (routeId) chooseRoute(routeId)
+  }
+
+  const unlockAndChooseRoute = (routeId: string) => {
+    unlockRoute(routeId)
+    setLastRouteByOperator((current) => ({ ...current, 'tokyo-metro': routeId }))
+    setParams({ route: routeId })
+    setZoom(1)
+    setMapResetKey((value) => value + 1)
   }
 
   const showNextCelebration = () => {
@@ -146,7 +167,7 @@ export function HomePage() {
           <div className="celebration" role="status">
             <span className="celebration-spark" aria-hidden="true">✦</span>
             <div>
-              <strong>{celebration.allFreeWritten ? 'おてほんなしで ぜんぶ かけた！' : celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
+              <strong>{newlyEarnedCheckpoint ? `${Math.round(newlyEarnedCheckpoint.ratio * 100)}% くかんスタンプ！` : celebration.allFreeWritten ? 'おてほんなしで ぜんぶ かけた！' : celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
               <span>{stationById.get(celebration.celebrateStationId)?.reading}</span>
             </div>
           </div>
@@ -202,7 +223,9 @@ export function HomePage() {
                         <strong>{operator.name}</strong>
                         <small>
                           {unlocked
-                            ? <>{progress.completedRoutes}/{operator.routeIds.length}ろせん クリア{progress.masteredRoutes > 0 && `　★★${progress.masteredRoutes}`}</>
+                            ? operator.id === 'tokyo-metro'
+                              ? <>スタンプ {metroStatus.earnedStamps}こ{metroStatus.availableChoices > 0 && `　🎫${metroStatus.availableChoices}まい`}</>
+                              : <>{progress.completedRoutes}/{operator.routeIds.length}ろせん クリア{progress.masteredRoutes > 0 && `　★★${progress.masteredRoutes}`}</>
                             : <>{accessProgress?.completed ?? 0}/{accessProgress?.total ?? 0}ろせん　あと{Math.max(0, (accessProgress?.total ?? 0) - (accessProgress?.completed ?? 0))}ろせん</>}
                         </small>
                       </span>
@@ -215,7 +238,10 @@ export function HomePage() {
               <p className="route-picker-label"><span>2</span>ろせん</p>
               <nav className="route-tabs" aria-label={`${selectedOperator.name}の ろせんを えらぶ`}>
                 {visibleRoutes.map((route) => {
-                  const progress = routeProgress.get(route.id) ?? { stationIds: [], completed: 0, achievement: 'none' as const }
+                  const progress = routeProgress.get(route.id) ?? {
+                    stationIds: [], completed: 0, achievement: 'none' as const,
+                    effort: { practicedPositions: 0, totalPositions: 0, ratio: 0 }, checkpoints: 0,
+                  }
                   return (
                     <button
                       key={route.id}
@@ -227,7 +253,7 @@ export function HomePage() {
                     >
                       <span aria-hidden="true" />
                       <strong>{route.name}</strong>
-                      <small>{progress.completed}/{progress.stationIds.length}</small>
+                      <small>{progress.completed}/{progress.stationIds.length}{progress.checkpoints > 0 && `　●${progress.checkpoints}/4`}</small>
                       {progress.achievement !== 'none' && (
                         <i className={`route-tab-achievement route-tab-achievement--${progress.achievement}`} aria-label={progress.achievement === 'master' ? 'ろせんマスター' : 'ろせんクリア'}>
                           {progress.achievement === 'master' ? '★★' : '★'}
@@ -238,6 +264,37 @@ export function HomePage() {
                 })}
               </nav>
             </div>
+            {selectedOperator.id === 'tokyo-metro' && lockedMetroRoutes.length > 0 && (
+              <section className={`metro-unlock-panel ${metroStatus.availableChoices > 0 ? 'metro-unlock-panel--ready' : ''}`} aria-labelledby="metro-unlock-heading">
+                <div className="metro-unlock-heading">
+                  <span className="metro-ticket" aria-hidden="true"><MaterialIcon name={metroStatus.availableChoices > 0 ? 'confirmation_number' : 'lock'} filled /></span>
+                  <div>
+                    <strong id="metro-unlock-heading">{metroStatus.availableChoices > 0 ? 'すきな ろせんを ひらけるよ！' : 'くかんスタンプを あつめよう'}</strong>
+                    <small>
+                      スタンプ {metroStatus.earnedStamps}こ
+                      {metroStatus.availableChoices > 0
+                        ? `　きっぷ ${metroStatus.availableChoices}まい`
+                        : metroStatus.nextStampTarget ? `　あと ${Math.max(0, metroStatus.nextStampTarget - metroStatus.earnedStamps)}こ` : ''}
+                    </small>
+                  </div>
+                </div>
+                <div className="metro-locked-routes">
+                  {lockedMetroRoutes.map((route) => (
+                    <button
+                      key={route.id}
+                      type="button"
+                      style={{ '--route-color': route.color } as React.CSSProperties}
+                      disabled={metroStatus.availableChoices < 1}
+                      onClick={() => unlockAndChooseRoute(route.id)}
+                    >
+                      <i aria-hidden="true" />
+                      <span><strong>{route.name}</strong><small>{route.orderedStationIds.length}えき</small></span>
+                      <MaterialIcon name={metroStatus.availableChoices > 0 ? 'lock_open' : 'lock'} filled={metroStatus.availableChoices > 0} />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
           <div className={`route-progress route-progress--${selectedProgress.achievement}`} style={{ '--route-color': selectedRoute.color } as React.CSSProperties}>
             <div className="route-progress-copy">
@@ -251,11 +308,20 @@ export function HomePage() {
               </span>
               {selectedProgress.achievement !== 'none' && <button type="button" className="route-celebration-button icon-button" onClick={replaySelectedRouteCelebration}><MaterialIcon name="celebration" filled />おいわいを みる</button>}
             </div>
-            <progress
-              value={selectedProgress.completed}
-              max={Math.max(1, selectedProgress.stationIds.length)}
-              aria-label={`${selectedRoute.name}、${selectedProgress.completed}/${selectedProgress.stationIds.length}えき かけた`}
-            />
+            <div className="route-effort-meter">
+              <progress
+                value={selectedProgress.effort.practicedPositions}
+                max={Math.max(1, selectedProgress.effort.totalPositions)}
+                aria-label={`${selectedRoute.name}、${Math.round(selectedProgress.effort.ratio * 100)}パーセント すすんだ`}
+              />
+              <div className="route-checkpoints" aria-label={`くかんスタンプ ${selectedProgress.checkpoints}/4`}>
+                {ROUTE_CHECKPOINT_RATIOS.map((ratio) => (
+                  <span key={ratio} className={selectedProgress.effort.ratio >= ratio ? 'earned' : ''}>
+                    <i aria-hidden="true">{selectedProgress.effort.ratio >= ratio ? '●' : '○'}</i>{Math.round(ratio * 100)}%
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="segment-label">しゅうろくくかん：{selectedSegment}（{selectedProgress.stationIds.length}えき）</div>
           {selectedRoute.note && <p className="route-note">{selectedRoute.note}</p>}
