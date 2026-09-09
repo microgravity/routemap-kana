@@ -24,25 +24,28 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
         <span>じぶんの ろせんず</span>
       </Link>
       {!compact && (
-        <button
-          type="button"
-          className="parent-entry"
-          onPointerDown={start}
-          onPointerUp={stop}
-          onPointerCancel={stop}
-          onPointerLeave={stop}
-          onClick={(event) => { if (event.detail === 0) navigate('/parent') }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              navigate('/parent')
-            }
-          }}
-          aria-label="おうちのひとの設定。長押ししてください"
-        >
-          <MaterialIcon name="settings" filled /> おうちのひと
-          <small>ながく おす</small>
-        </button>
+        <div className="header-actions">
+          <Link to="/profile" className="profile-entry"><MaterialIcon name="account_circle" filled /><span>わたしの きろく</span></Link>
+          <button
+            type="button"
+            className="parent-entry"
+            onPointerDown={start}
+            onPointerUp={stop}
+            onPointerCancel={stop}
+            onPointerLeave={stop}
+            onClick={(event) => { if (event.detail === 0) navigate('/parent') }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                navigate('/parent')
+              }
+            }}
+            aria-label="おうちのひとの設定。長押ししてください"
+          >
+            <MaterialIcon name="settings" filled /> <span className="parent-entry-label">おうちのひと</span>
+            <small>ながく おす</small>
+          </button>
+        </div>
       )}
     </header>
   )
