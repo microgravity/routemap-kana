@@ -97,23 +97,34 @@ export function ProfilePage() {
               const operatorUnlocked = isOperatorUnlocked(operator, state.unlockedMilestones)
               const milestone = operator.unlockMilestoneId ? unlockMilestoneById.get(operator.unlockMilestoneId) : undefined
               const access = milestone ? unlockProgress(milestone, { routes, stationById, progress: state.progress }) : undefined
-              return (
-                <section key={operator.id} className={`profile-operator ${operatorUnlocked ? '' : 'profile-operator--locked'}`} style={{ '--operator-color': operator.color } as React.CSSProperties} aria-labelledby={`profile-operator-${operator.id}`}>
-                  <header>
+              const routeRecords = operator.routeIds.flatMap((routeId) => {
+                const record = routeRecordById.get(routeId)
+                return record ? [record] : []
+              })
+              const completedRoutes = routeRecords.filter((record) => record.achievement !== 'none').length
+              const operatorHeading = (
+                <>
                     <span className="profile-operator-mark" aria-hidden="true"><i /><i /><i /></span>
-                    <div><h3 id={`profile-operator-${operator.id}`}>{operator.shortName}</h3><p>{operatorUnlocked ? `${operator.routeIds.length}ろせん` : `あと ${Math.max(0, (access?.total ?? 0) - (access?.completed ?? 0))}ろせんで ひらくよ`}</p></div>
-                    {!operatorUnlocked && <MaterialIcon name="lock" filled />}
-                  </header>
-                  {operatorUnlocked ? (
+                    <div><h3 id={`profile-operator-${operator.id}`}>{operator.shortName}</h3><p>{operatorUnlocked ? `${completedRoutes} / ${operator.routeIds.length}ろせん クリア` : `あと ${Math.max(0, (access?.total ?? 0) - (access?.completed ?? 0))}ろせんで ひらくよ`}</p></div>
+                </>
+              )
+              return operatorUnlocked ? (
+                <details key={operator.id} className="profile-operator" style={{ '--operator-color': operator.color } as React.CSSProperties} aria-labelledby={`profile-operator-${operator.id}`}>
+                  <summary>
+                    {operatorHeading}
+                    <MaterialIcon name="expand_more" className="profile-operator-chevron" />
+                  </summary>
                     <div className="profile-route-list">
-                      {operator.routeIds.map((routeId) => {
-                        const record = routeRecordById.get(routeId)
-                        return record ? <ProfileRouteCard key={routeId} route={record} /> : null
-                      })}
+                      {routeRecords.map((record) => <ProfileRouteCard key={record.routeId} route={record} />)}
                     </div>
-                  ) : (
+                </details>
+              ) : (
+                <section key={operator.id} className="profile-operator profile-operator--locked" style={{ '--operator-color': operator.color } as React.CSSProperties} aria-labelledby={`profile-operator-${operator.id}`}>
+                  <header>
+                    {operatorHeading}
+                    <MaterialIcon name="lock" filled />
+                  </header>
                     <progress value={access?.completed ?? 0} max={Math.max(1, access?.total ?? 1)} aria-label={`${operator.shortName}まで ${access?.completed ?? 0}/${access?.total ?? 0}ろせん`} />
-                  )}
                 </section>
               )
             })}

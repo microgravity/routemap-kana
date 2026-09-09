@@ -635,10 +635,15 @@ h1, h2, p { overflow-wrap: anywhere; }
 
 .profile-operator-list { display: grid; gap: 16px; }
 .profile-operator { padding: 18px; border: 2px solid #ddd5c7; border-color: color-mix(in srgb, var(--operator-color), white 70%); border-radius: 22px; background: #fff; background: color-mix(in srgb, var(--operator-color), white 96%); }
-.profile-operator > header { display: flex; align-items: center; gap: 11px; }
-.profile-operator > header h3 { margin: 0; font-size: 1.08rem; }
-.profile-operator > header p { margin: 2px 0 0; color: var(--muted); font-size: .7rem; font-weight: 800; }
-.profile-operator > header > .material-icon { margin-left: auto; color: var(--muted); }
+.profile-operator > summary, .profile-operator > header { min-height: 44px; display: flex; align-items: center; gap: 11px; }
+.profile-operator > summary { border-radius: 14px; cursor: pointer; list-style: none; }
+.profile-operator > summary::-webkit-details-marker { display: none; }
+.profile-operator > summary:focus-visible { outline: 4px solid #2b7de9; outline-offset: 5px; }
+.profile-operator > summary h3, .profile-operator > header h3 { margin: 0; font-size: 1.08rem; }
+.profile-operator > summary p, .profile-operator > header p { margin: 2px 0 0; color: var(--muted); font-size: .7rem; font-weight: 800; }
+.profile-operator > header > .material-icon, .profile-operator-chevron { margin-left: auto; color: var(--muted); }
+.profile-operator-chevron { font-size: 1.7rem; transition: transform .2s ease; }
+.profile-operator[open] > summary .profile-operator-chevron { transform: rotate(180deg); }
 .profile-operator-mark { position: relative; width: 42px; height: 24px; display: flex; align-items: center; justify-content: space-between; }
 .profile-operator-mark::before { content: ""; position: absolute; left: 2px; right: 2px; top: 9px; height: 6px; border-radius: 10px; background: var(--operator-color); }
 .profile-operator-mark i { position: relative; z-index: 1; width: 13px; height: 13px; border: 4px solid var(--operator-color); border-radius: 50%; background: #fff; }
