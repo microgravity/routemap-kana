@@ -47,8 +47,8 @@ export function ProfilePage() {
             <p>かいた もじと、あつめた スタンプを みてみよう。</p>
           </div>
           <div className="profile-hero-badges" aria-label="ろせんの きろく">
-            <span><MaterialIcon name="workspace_premium" filled /><strong>{profile.completedRoutes}</strong>ろせん クリア</span>
-            <span><MaterialIcon name="stars" filled /><strong>{profile.masteredRoutes}</strong>ろせん マスター</span>
+            <span><i className="profile-hero-badge-icon" aria-hidden="true"><MaterialIcon name="workspace_premium" filled /></i><strong>{profile.completedRoutes}</strong>ろせん クリア</span>
+            <span><i className="profile-hero-badge-icon" aria-hidden="true"><MaterialIcon name="stars" filled /></i><strong>{profile.masteredRoutes}</strong>ろせん マスター</span>
           </div>
         </header>
 
@@ -123,7 +123,7 @@ export function ProfilePage() {
             <div className="profile-medals">
               {medals.map((route) => (
                 <Link key={route.routeId} to={`/?route=${route.routeId}`} className={`profile-medal profile-medal--${route.achievement}`} style={{ '--route-color': route.color } as React.CSSProperties}>
-                  <span className="profile-medal-face" aria-hidden="true"><MaterialIcon name="workspace_premium" filled /><i>{route.achievement === 'master' ? '★★' : '★'}</i></span>
+                  <span className="profile-medal-face" aria-hidden="true"><MaterialIcon name="workspace_premium" filled /></span>
                   <strong>{route.name}</strong>
                   <small>{route.achievement === 'master' ? 'ろせんマスター' : 'ぜんえき クリア'}</small>
                 </Link>
