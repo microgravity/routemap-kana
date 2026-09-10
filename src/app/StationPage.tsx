@@ -115,13 +115,12 @@ function BoardNeighbor({ station, direction, routeId, next = false }: { station?
   const className = `station-board-neighbor ${next ? 'station-board-neighbor--next' : ''}`
   const content = (
     <>
-      <small>{next ? `${direction} →` : `← ${direction}`}</small>
-      {station ? <><strong>{station.displayName}</strong><span>{station.reading}</span></> : <strong>ここが はし</strong>}
+      {station && <><small>{next ? `${direction} →` : `← ${direction}`}</small><strong>{station.displayName}</strong><span>{station.reading}</span></>}
     </>
   )
   return station
     ? <Link className={className} to={`/station/${station.id}?route=${routeId}`} aria-label={`${direction}、${station.displayName}、${station.reading}`}>{content}</Link>
-    : <div className={className}>{content}</div>
+    : <div className={className} aria-hidden="true" />
 }
 
 function NotFound() {
