@@ -71,12 +71,12 @@ export function StationPage() {
               <p className="station-big-reading">{station.reading}</p>
             </div>
             <div className="station-board-neighbors">
-              <BoardNeighbor station={previousStation} direction="まえの えき" />
+              <BoardNeighbor station={previousStation} direction="まえの えき" routeId={routeId} />
               <div className="station-board-route">
                 <small>{activeRoute?.name ?? 'みつけた えき'}</small>
                 {stationCode && <strong>{stationCode}</strong>}
               </div>
-              <BoardNeighbor station={nextStation} direction="つぎの えき" next />
+              <BoardNeighbor station={nextStation} direction="つぎの えき" routeId={routeId} next />
             </div>
           </section>
           <div className="route-badges route-badges--center" aria-label="この えきの ろせん">
@@ -111,13 +111,17 @@ export function StationPage() {
   )
 }
 
-function BoardNeighbor({ station, direction, next = false }: { station?: { displayName: string; reading: string }; direction: string; next?: boolean }) {
-  return (
-    <div className={`station-board-neighbor ${next ? 'station-board-neighbor--next' : ''}`}>
+function BoardNeighbor({ station, direction, routeId, next = false }: { station?: { id: string; displayName: string; reading: string }; direction: string; routeId: string; next?: boolean }) {
+  const className = `station-board-neighbor ${next ? 'station-board-neighbor--next' : ''}`
+  const content = (
+    <>
       <small>{next ? `${direction} →` : `← ${direction}`}</small>
       {station ? <><strong>{station.displayName}</strong><span>{station.reading}</span></> : <strong>ここが はし</strong>}
-    </div>
+    </>
   )
+  return station
+    ? <Link className={className} to={`/station/${station.id}?route=${routeId}`} aria-label={`${direction}、${station.displayName}、${station.reading}`}>{content}</Link>
+    : <div className={className}>{content}</div>
 }
 
 function NotFound() {

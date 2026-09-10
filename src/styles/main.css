@@ -409,6 +409,9 @@ h1, h2, p { overflow-wrap: anywhere; }
 .station-board-neighbors { min-height: 98px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .55fr) minmax(0, 1fr); border-top: 3px solid var(--station-route-color); background: color-mix(in srgb, var(--station-route-color), white 92%); }
 .station-board-neighbor { min-width: 0; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: left; }
 .station-board-neighbor--next { align-items: flex-end; text-align: right; }
+.station-board-neighbor[href] { color: var(--ink); text-decoration: none; transition: background .15s ease, transform .15s ease; }
+.station-board-neighbor[href]:hover { background: color-mix(in srgb, var(--station-route-color), white 82%); }
+.station-board-neighbor[href]:active { transform: translateY(2px); }
 .station-board-neighbor small, .station-board-route small { color: var(--muted); font-size: .64rem; font-weight: 900; }
 .station-board-neighbor strong { max-width: 100%; margin-top: 3px; font-size: clamp(.92rem, 2vw, 1.18rem); line-height: 1.25; overflow-wrap: anywhere; }
 .station-board-neighbor span { max-width: 100%; color: var(--muted); font-size: .67rem; font-weight: 800; overflow-wrap: anywhere; }
