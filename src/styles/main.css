@@ -361,14 +361,16 @@ h1, h2, p { overflow-wrap: anywhere; }
 .route-reward-card h2 { margin: 3px 0 20px; font-size: clamp(2.5rem, 8vw, 4.4rem); line-height: 1.1; color: #604a16; }
 .route-reward-backdrop--master .route-reward-card { border-color: #8b56b3; background: linear-gradient(145deg, #fffdf7 55%, #f3e5fb); }
 .route-reward-backdrop--master .route-reward-card h2 { color: #754294; }
-.route-reward-medal { position: relative; width: 112px; height: 112px; margin: -6px auto 6px; display: grid; place-items: center; border: 9px double #fff4bd; border-radius: 50%; background: linear-gradient(145deg, #f8d567, #d6940d); color: white; box-shadow: 0 10px 0 #ad7510, 0 15px 25px rgba(91, 65, 11, .22); transform: rotate(-4deg); }
-.route-reward-medal::before, .route-reward-medal::after { content: ''; position: absolute; z-index: -1; bottom: -30px; width: 35px; height: 52px; background: #d79a17; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
-.route-reward-medal::before { left: 11px; transform: rotate(12deg); }
-.route-reward-medal::after { right: 11px; transform: rotate(-12deg); }
-.route-reward-medal span { font-size: 2.8rem; font-weight: 900; text-shadow: 0 2px 0 rgba(113, 71, 0, .2); }
-.route-reward-backdrop--master .route-reward-medal { border-color: #f4ddff; background: linear-gradient(145deg, #b982d5, #6c388f); box-shadow: 0 10px 0 #5b2b79, 0 15px 25px rgba(72, 34, 98, .24); }
-.route-reward-backdrop--master .route-reward-medal::before, .route-reward-backdrop--master .route-reward-medal::after { background: #78469a; }
-.route-reward-backdrop--master .route-reward-medal span { padding-right: 12px; font-size: 2.1rem; letter-spacing: -13px; }
+.route-reward-medal { --medal-size: 112px; position: relative; width: var(--medal-size); height: calc(var(--medal-size) + 34px); margin: -6px auto 0; }
+.route-reward-ribbons { position: absolute; z-index: 0; left: 50%; top: 54%; width: 74%; height: 62%; transform: translateX(-50%); }
+.route-reward-ribbons i { position: absolute; top: 0; width: 48%; height: 100%; background: #d79a17; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+.route-reward-ribbons i:first-child { left: 1%; transform: rotate(8deg); transform-origin: 70% 0; }
+.route-reward-ribbons i:last-child { right: 1%; transform: rotate(-8deg); transform-origin: 30% 0; }
+.route-reward-medal-face { position: relative; z-index: 1; width: var(--medal-size); height: var(--medal-size); display: grid; place-items: center; border: 9px double #fff4bd; border-radius: 50%; background: linear-gradient(145deg, #f8d567, #d6940d); color: white; box-shadow: 0 10px 0 #ad7510, 0 15px 25px rgba(91, 65, 11, .22); transform: rotate(-2deg); }
+.route-reward-medal-face > span { font-size: 2.8rem; font-weight: 900; text-shadow: 0 2px 0 rgba(113, 71, 0, .2); }
+.route-reward-backdrop--master .route-reward-ribbons i { background: #78469a; }
+.route-reward-backdrop--master .route-reward-medal-face { border-color: #f4ddff; background: linear-gradient(145deg, #b982d5, #6c388f); box-shadow: 0 10px 0 #5b2b79, 0 15px 25px rgba(72, 34, 98, .24); }
+.route-reward-backdrop--master .route-reward-medal-face > span { padding-right: 12px; font-size: 2.1rem; letter-spacing: -13px; }
 .route-reward-step { width: fit-content; margin: 0 auto 7px; padding: 4px 10px; border-radius: 999px; background: #eee7d8; color: var(--muted); font-size: .72rem; font-weight: 900; }
 .route-reward-track { position: relative; width: min(430px, 90%); min-height: 54px; margin: 8px auto 12px; display: flex; align-items: center; justify-content: space-between; }
 .route-reward-track::before { content: ''; position: absolute; left: 4px; right: 4px; top: 25px; height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--route-color) 72%, white); box-shadow: 0 0 0 6px color-mix(in srgb, var(--route-color) 13%, white); }
@@ -383,7 +385,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .operator-unlock-reward small { margin-top: 3px; font-weight: 800; }
 .route-reward-actions { margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 10px; }
 .route-reward-actions button { min-height: 58px; font-size: .82rem; }
-.route-confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.route-confetti { position: fixed; z-index: 3; inset: 0; overflow: hidden; pointer-events: none; }
 .route-confetti i { position: absolute; top: -10%; color: #f2bd28; font-style: normal; font-size: 20px; animation: confetti-fall 3.2s ease-in both; animation-delay: calc(var(--confetti-index) * 70ms); }
 .route-confetti i:nth-child(1) { left: 4%; } .route-confetti i:nth-child(2) { left: 12%; color: #6fc1b4; } .route-confetti i:nth-child(3) { left: 21%; color: #e77253; } .route-confetti i:nth-child(4) { left: 30%; } .route-confetti i:nth-child(5) { left: 39%; color: #9361b5; } .route-confetti i:nth-child(6) { left: 47%; color: #6fc1b4; } .route-confetti i:nth-child(7) { left: 56%; } .route-confetti i:nth-child(8) { left: 65%; color: #e77253; } .route-confetti i:nth-child(9) { left: 73%; color: #9361b5; } .route-confetti i:nth-child(10) { left: 81%; color: #6fc1b4; } .route-confetti i:nth-child(11) { left: 89%; } .route-confetti i:nth-child(12) { left: 96%; color: #e77253; }
 
@@ -775,7 +777,7 @@ h1, h2, p { overflow-wrap: anywhere; }
   .selected-kana { width: 74px; height: 74px; border-radius: 22px; font-size: 3rem; }
   .route-reward-card { padding-inline: 20px; border-radius: 28px; }
   .route-reward-actions { grid-template-columns: 1fr; }
-  .route-reward-medal { width: 92px; height: 92px; }
+  .route-reward-medal { --medal-size: 92px; }
 }
 
 @media (max-width: 520px) {

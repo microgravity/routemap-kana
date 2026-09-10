@@ -375,7 +375,8 @@ export function HomePage() {
           </div>
           <div className="route-reward-card" style={{ '--route-color': activeCelebrationRoute.color } as React.CSSProperties}>
             <div className="route-reward-medal" aria-hidden="true">
-              <span>{activeRouteCelebration.level === 'master' ? '★★' : '★'}</span>
+              <span className="route-reward-ribbons"><i /><i /></span>
+              <span className="route-reward-medal-face"><span>{activeRouteCelebration.level === 'master' ? '★★' : '★'}</span></span>
             </div>
             {routeCelebrations.length > 1 && <p className="route-reward-step">{routeCelebrationIndex + 1} / {routeCelebrations.length} ろせん</p>}
             <p className="eyebrow">{activeCelebrationRoute.name}</p>
