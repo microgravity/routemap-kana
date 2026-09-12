@@ -355,18 +355,23 @@ h1, h2, p { overflow-wrap: anywhere; }
 .celebration strong { font-size: 1.25rem; }
 .celebration span { color: var(--muted); }
 
-.route-reward-backdrop { position: fixed; z-index: 30; inset: 0; padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); display: grid; place-items: center; overflow-y: auto; background: rgba(35, 48, 49, .55); }
-.route-reward-card { position: relative; z-index: 1; width: min(610px, 100%); padding: clamp(26px, 5vw, 42px); border: 4px solid color-mix(in srgb, var(--route-color) 45%, #e1ad2d); border-radius: 38px; background: #fffdf7; box-shadow: 0 28px 90px rgba(27, 35, 36, .34); text-align: center; animation: route-reward-in .55s cubic-bezier(.2, .9, .2, 1.12); }
+.route-reward-backdrop { position: fixed; z-index: 30; isolation: isolate; inset: 0; padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); display: grid; place-items: center; overflow-y: auto; background: radial-gradient(circle at 50% 42%, rgba(255, 218, 78, .28), transparent 35%), rgba(35, 48, 49, .62); }
+.route-reward-backdrop::before { content: ''; position: fixed; z-index: 0; left: 50%; top: 50%; width: min(105vmin, 920px); aspect-ratio: 1; border-radius: 50%; background: repeating-conic-gradient(from -8deg, rgba(255, 231, 123, .28) 0 7deg, transparent 7deg 19deg); -webkit-mask: radial-gradient(circle, transparent 0 25%, #000 27% 62%, transparent 66%); mask: radial-gradient(circle, transparent 0 25%, #000 27% 62%, transparent 66%); pointer-events: none; animation: reward-rays 13s linear infinite; }
+.route-reward-backdrop--master::before { background: repeating-conic-gradient(from -8deg, rgba(225, 176, 255, .3) 0 7deg, transparent 7deg 19deg); }
+.route-reward-card { position: relative; z-index: 1; width: min(610px, 100%); padding: clamp(26px, 5vw, 42px); border: 4px solid color-mix(in srgb, var(--route-color) 45%, #e1ad2d); border-radius: 38px; background: #fffdf7; box-shadow: 0 28px 90px rgba(27, 35, 36, .34), 0 0 0 0 rgba(255, 222, 91, .45); text-align: center; animation: route-reward-in .55s cubic-bezier(.2, .9, .2, 1.12), reward-card-glow 1.15s .5s ease-out 3; }
 .route-reward-card .eyebrow { margin-top: 10px; color: var(--route-color); font-size: 1rem; }
-.route-reward-card h2 { margin: 3px 0 20px; font-size: clamp(2.5rem, 8vw, 4.4rem); line-height: 1.1; color: #604a16; }
+.route-reward-card h2 { margin: 3px 0 20px; font-size: clamp(2.5rem, 8vw, 4.4rem); line-height: 1.1; color: #604a16; animation: reward-title-bounce .8s .22s cubic-bezier(.2, .9, .25, 1.3) both; }
 .route-reward-backdrop--master .route-reward-card { border-color: #8b56b3; background: linear-gradient(145deg, #fffdf7 55%, #f3e5fb); }
 .route-reward-backdrop--master .route-reward-card h2 { color: #754294; }
 .route-reward-medal { --medal-size: 112px; position: relative; width: var(--medal-size); height: calc(var(--medal-size) + 34px); margin: -6px auto 0; }
+.route-reward-medal::before, .route-reward-medal::after { position: absolute; z-index: 3; color: #ffd64d; font-size: 2rem; line-height: 1; text-shadow: 0 3px 12px rgba(121, 78, 0, .26); animation: reward-sparkle 1.3s .45s ease-in-out 3 both; }
+.route-reward-medal::before { content: '✦'; left: -38px; top: 7px; }
+.route-reward-medal::after { content: '★'; right: -39px; top: 32px; font-size: 1.35rem; animation-delay: .68s; }
 .route-reward-ribbons { position: absolute; z-index: 0; left: 50%; top: 54%; width: 74%; height: 62%; transform: translateX(-50%); }
 .route-reward-ribbons i { position: absolute; top: 0; width: 48%; height: 100%; background: #d79a17; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
 .route-reward-ribbons i:first-child { left: 1%; transform: rotate(8deg); transform-origin: 70% 0; }
 .route-reward-ribbons i:last-child { right: 1%; transform: rotate(-8deg); transform-origin: 30% 0; }
-.route-reward-medal-face { position: relative; z-index: 1; width: var(--medal-size); height: var(--medal-size); display: grid; place-items: center; border: 9px double #fff4bd; border-radius: 50%; background: linear-gradient(145deg, #f8d567, #d6940d); color: white; box-shadow: 0 10px 0 #ad7510, 0 15px 25px rgba(91, 65, 11, .22); transform: rotate(-2deg); }
+.route-reward-medal-face { position: relative; z-index: 1; width: var(--medal-size); height: var(--medal-size); display: grid; place-items: center; border: 9px double #fff4bd; border-radius: 50%; background: linear-gradient(145deg, #f8d567, #d6940d); color: white; box-shadow: 0 10px 0 #ad7510, 0 15px 25px rgba(91, 65, 11, .22); transform: rotate(-2deg); animation: reward-medal-pop .85s .08s cubic-bezier(.18, .9, .28, 1.35) both; }
 .route-reward-medal-face > span { font-size: 2.8rem; font-weight: 900; text-shadow: 0 2px 0 rgba(113, 71, 0, .2); }
 .route-reward-backdrop--master .route-reward-ribbons i { background: #78469a; }
 .route-reward-backdrop--master .route-reward-medal-face { border-color: #f4ddff; background: linear-gradient(145deg, #b982d5, #6c388f); box-shadow: 0 10px 0 #5b2b79, 0 15px 25px rgba(72, 34, 98, .24); }
@@ -386,8 +391,7 @@ h1, h2, p { overflow-wrap: anywhere; }
 .route-reward-actions { margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 10px; }
 .route-reward-actions button { min-height: 58px; font-size: .82rem; }
 .route-confetti { position: fixed; z-index: 3; inset: 0; overflow: hidden; pointer-events: none; }
-.route-confetti i { position: absolute; top: -10%; color: #f2bd28; font-style: normal; font-size: 20px; animation: confetti-fall 3.2s ease-in both; animation-delay: calc(var(--confetti-index) * 70ms); }
-.route-confetti i:nth-child(1) { left: 4%; } .route-confetti i:nth-child(2) { left: 12%; color: #6fc1b4; } .route-confetti i:nth-child(3) { left: 21%; color: #e77253; } .route-confetti i:nth-child(4) { left: 30%; } .route-confetti i:nth-child(5) { left: 39%; color: #9361b5; } .route-confetti i:nth-child(6) { left: 47%; color: #6fc1b4; } .route-confetti i:nth-child(7) { left: 56%; } .route-confetti i:nth-child(8) { left: 65%; color: #e77253; } .route-confetti i:nth-child(9) { left: 73%; color: #9361b5; } .route-confetti i:nth-child(10) { left: 81%; color: #6fc1b4; } .route-confetti i:nth-child(11) { left: 89%; } .route-confetti i:nth-child(12) { left: 96%; color: #e77253; }
+.route-confetti i { position: absolute; left: var(--confetti-left); top: -12vh; color: var(--confetti-color); font-style: normal; font-size: var(--confetti-size); line-height: 1; filter: drop-shadow(0 3px 2px rgba(37, 38, 28, .18)); will-change: transform, opacity; animation: confetti-fall var(--confetti-duration) cubic-bezier(.18, .7, .3, 1) both; animation-delay: var(--confetti-delay); }
 
 .found-stations { margin-top: 22px; padding: 24px 30px; display: flex; gap: 28px; align-items: center; }
 .found-stations h2 { margin: 0; }
@@ -720,9 +724,14 @@ h1, h2, p { overflow-wrap: anywhere; }
 @keyframes route-light-up { 0% { opacity: .18; stroke-width: 9; } 65% { opacity: 1; stroke-width: 15; } 100% { opacity: 1; stroke-width: 9; } }
 @keyframes route-station-pop { 0% { opacity: .45; transform: scale(.65); } 70% { opacity: 1; transform: scale(1.32); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes route-reward-in { from { opacity: 0; transform: translateY(24px) scale(.88) rotate(-2deg); } }
+@keyframes reward-rays { from { transform: translate(-50%, -50%) rotate(0deg) scale(.86); } 50% { opacity: .72; } to { transform: translate(-50%, -50%) rotate(360deg) scale(1.05); } }
+@keyframes reward-card-glow { 50% { box-shadow: 0 28px 90px rgba(27, 35, 36, .34), 0 0 0 18px rgba(255, 222, 91, 0); } }
+@keyframes reward-title-bounce { 0% { opacity: 0; transform: scale(.55) rotate(-4deg); } 65% { opacity: 1; transform: scale(1.12) rotate(2deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes reward-medal-pop { 0% { opacity: 0; transform: translateY(-45px) scale(.35) rotate(-22deg); } 65% { opacity: 1; transform: translateY(5px) scale(1.16) rotate(7deg); } 100% { opacity: 1; transform: translateY(0) scale(1) rotate(-2deg); } }
+@keyframes reward-sparkle { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0); } 45% { opacity: 1; transform: scale(1.25) rotate(24deg); } }
 @keyframes reward-train-trip { 0% { left: -3px; transform: translateY(0); } 45% { transform: translateY(-5px); } 100% { left: calc(100% - 36px); transform: translateY(0); } }
 @keyframes reward-station-light { from { opacity: .25; transform: scale(.6); } 70% { transform: scale(1.35); } }
-@keyframes confetti-fall { 0% { opacity: 0; transform: translateY(-8vh) rotate(0); } 12% { opacity: 1; } 100% { opacity: 0; transform: translateY(112vh) rotate(620deg); } }
+@keyframes confetti-fall { 0% { opacity: 0; transform: translate3d(0, -8vh, 0) rotate(0) scale(.55); } 10% { opacity: 1; } 82% { opacity: 1; } 100% { opacity: 0; transform: translate3d(var(--confetti-drift), 118vh, 0) rotate(var(--confetti-spin)) scale(1); } }
 
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 .reduce-motion .route-confetti, .reduce-motion .route-completion-trip, .reduce-motion .route-reward-train { display: none; }

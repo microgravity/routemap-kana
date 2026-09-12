@@ -371,7 +371,26 @@ export function HomePage() {
           aria-describedby="route-reward-count"
         >
           <div className="route-confetti" aria-hidden="true">
-            {Array.from({ length: 12 }, (_, index) => <i key={index} style={{ '--confetti-index': index } as React.CSSProperties}>{index % 3 === 0 ? '★' : '●'}</i>)}
+            {Array.from({ length: 42 }, (_, index) => {
+              const colors = ['#f7c83e', '#66c3b8', '#ee7654', '#a46ac1', '#55a9df', '#ff91b8']
+              const shapes = ['★', '●', '◆', '▲', '✦']
+              return (
+                <i
+                  key={index}
+                  style={{
+                    '--confetti-left': `${(index * 37 + 5) % 100}%`,
+                    '--confetti-drift': `${((index * 29) % 45) - 22}vw`,
+                    '--confetti-size': `${14 + (index % 5) * 4}px`,
+                    '--confetti-color': colors[index % colors.length],
+                    '--confetti-delay': `${(index % 14) * .055 + Math.floor(index / 14) * .42}s`,
+                    '--confetti-duration': `${3.4 + (index % 4) * .35}s`,
+                    '--confetti-spin': `${index % 2 === 0 ? 720 : -720}deg`,
+                  } as React.CSSProperties}
+                >
+                  {shapes[index % shapes.length]}
+                </i>
+              )
+            })}
           </div>
           <div className="route-reward-card" style={{ '--route-color': activeCelebrationRoute.color } as React.CSSProperties}>
             <div className="route-reward-medal" aria-hidden="true">
