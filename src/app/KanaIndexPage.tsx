@@ -5,7 +5,7 @@ import { MaterialIcon } from '../components/MaterialIcon'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
 import { railwayOperators, routes, stationCodeForRoute } from '../data/stations'
 import { normalizeReading, splitKana } from '../domain/kana'
-import { practicedKanaSet } from '../domain/progress'
+import { isStationFreeWritten, isStationPracticed, practicedKanaSet, reconcileProgress } from '../domain/progress'
 import { buildKanaStationIndex, matchesForKana } from '../domain/stationIndex'
 import type { Route } from '../domain/types'
 import { isRouteUnlocked } from '../domain/unlocks'
@@ -56,20 +56,31 @@ export function KanaIndexPage() {
                 if (!station) return null
                 const primaryRouteId = match.routeIds[0] ?? 'found'
                 const stationUrl = `/station/${station.id}?route=${primaryRouteId}&focus=${match.positions[0]}&from=kana&kana=${encodeURIComponent(selectedKana)}`
+                const stationProgress = reconcileProgress(state.progress[station.id], station.reading)
+                const stationKanaLength = splitKana(station.reading).length
+                const stationStatus = isStationFreeWritten(stationProgress, station.reading)
+                  ? 'master'
+                  : isStationPracticed(stationProgress, station.reading)
+                    ? 'complete'
+                    : stationProgress.practicedPositions.length > 0 ? 'partial' : 'none'
                 return (
-                  <article key={station.id} className="kana-result-card">
-                    <button type="button" className="kana-result-station" onClick={() => navigate(stationUrl)}>
-                      <span className="kana-result-name">{station.displayName}</span>
+                  <article key={station.id} className={`kana-result-card kana-result-card--${stationStatus}`}>
+                    <Link className="kana-result-station" to={stationUrl}>
+                      <span className="kana-result-title-row">
+                        <span className="kana-result-name">{station.displayName}</span>
+                        <StationPracticeStatus status={stationStatus} practiced={stationProgress.practicedPositions.length} total={stationKanaLength} />
+                      </span>
                       <span className="kana-result-reading">{highlightReading(station.reading, selectedKana)}</span>
-                    </button>
-                    <div className="route-badges" aria-label="この えきの ろせん">
-                      {match.routeIds.length > 0 ? match.routeIds.map((routeId) => {
-                        const route = routes.find((item) => item.id === routeId)
-                        if (!route) return null
-                        const code = stationCodeForRoute(route, station.id)
-                        return <RouteBadge key={route.id} route={route} code={code} />
-                      }) : <span className="route-badge route-badge--found">みつけた えき</span>}
-                    </div>
+                      <span className="route-badges" aria-label="この えきの ろせん">
+                        {match.routeIds.length > 0 ? match.routeIds.map((routeId) => {
+                          const route = routes.find((item) => item.id === routeId)
+                          if (!route) return null
+                          const code = stationCodeForRoute(route, station.id)
+                          return <RouteBadge key={route.id} route={route} code={code} />
+                        }) : <span className="route-badge route-badge--found">みつけた えき</span>}
+                      </span>
+                      <span className="kana-result-open">えきを みる <MaterialIcon name="arrow_forward" /></span>
+                    </Link>
                     <div className="kana-result-actions" aria-label={`${selectedKana}を かく ばしょ`}>
                       {match.positions.map((position, occurrenceIndex) => (
                         <button
@@ -106,6 +117,13 @@ export function KanaIndexPage() {
       </main>
     </div>
   )
+}
+
+function StationPracticeStatus({ status, practiced, total }: { status: 'none' | 'partial' | 'complete' | 'master'; practiced: number; total: number }) {
+  if (status === 'master') return <span className="kana-result-status kana-result-status--master"><MaterialIcon name="hotel_class" filled />おてほんなし</span>
+  if (status === 'complete') return <span className="kana-result-status kana-result-status--complete"><MaterialIcon name="star" filled />ぜんぶ かけた</span>
+  if (status === 'partial') return <span className="kana-result-status kana-result-status--partial"><MaterialIcon name="edit_note" />{practiced}/{total}もじ</span>
+  return <span className="kana-result-status kana-result-status--none">まだ</span>
 }
 
 function KanaTable({ title, rows, index, practicedKana, onChoose }: { title: string; rows: Array<Array<string | null>>; index: ReturnType<typeof buildKanaStationIndex>; practicedKana: ReadonlySet<string>; onChoose: (kana: string) => void }) {
