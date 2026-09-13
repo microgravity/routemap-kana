@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { builtInStations, routes } from '../data/stations'
-import { normalizeReading } from '../domain/kana'
+import { normalizeReading, splitKana } from '../domain/kana'
 import { appendMilestoneHistory, milestoneEventsForPracticeResult, recoverRouteAchievementHistory } from '../domain/milestoneHistory'
+import { appendPracticeHistory, createPracticeHistoryEvent } from '../domain/practiceHistory'
 import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
-import type { AppSettings, AppState, CustomStation, PersistedState, Station, StationOverride } from '../domain/types'
+import type { AppSettings, AppState, CustomStation, PersistedState, PracticeMode, Station, StationOverride } from '../domain/types'
 import { grantEarnedMilestones, grantMetroRouteChoice, migrateUnlockMilestones, routeCheckpointMilestoneById, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
@@ -14,7 +15,7 @@ interface AppStateValue {
   storageWarning?: string
   routeStationIds: (routeId: string) => string[]
   updateSettings: (patch: Partial<AppSettings>) => void
-  markPositionComplete: (stationId: string, position: number, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; unlockedMilestones: string[] }
+  markPositionComplete: (stationId: string, position: number, mode: PracticeMode, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; unlockedMilestones: string[] }
   unlockRoute: (routeId: string) => void
   setCurrentPosition: (stationId: string, position: number) => void
   saveStation: (station: CustomStation | Station, routeId?: string | null, insertAfterStationId?: string | null) => void
@@ -103,9 +104,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, settings: { ...current.settings, ...patch } }))
   }, [])
 
-  const markPositionComplete = useCallback((stationId: string, position: number, freeWritten = false) => {
+  const markPositionComplete = useCallback((stationId: string, position: number, mode: PracticeMode, freeWritten = false) => {
     const station = stationById.get(stationId)
     if (!station) return { firstAdd: false, allComplete: false, allFreeWritten: false, routeAchievements: [], unlockedMilestones: [] }
+    const kana = splitKana(station.reading)[position]
+    if (!kana) return { firstAdd: false, allComplete: false, allFreeWritten: false, routeAchievements: [], unlockedMilestones: [] }
+    const practiceEvent = createPracticeHistoryEvent(station, kana, position, mode, freeWritten)
     const previous = reconcileProgress(state.progress[stationId], station.reading)
     const update = freeWritten ? completeFreeWrittenPosition : completePosition
     const completed = update(previous, position)
@@ -137,9 +141,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ...current,
         progress: { ...current.progress, [stationId]: update(existing, position) },
       })
-      return milestoneEvents.length === 0
-        ? earned
-        : { ...earned, milestoneHistory: appendMilestoneHistory(earned.milestoneHistory, milestoneEvents) }
+      return {
+        ...earned,
+        practiceHistory: appendPracticeHistory(earned.practiceHistory, practiceEvent),
+        milestoneHistory: milestoneEvents.length === 0
+          ? earned.milestoneHistory
+          : appendMilestoneHistory(earned.milestoneHistory, milestoneEvents),
+      }
     })
     return result
   }, [routeStationIds, state.progress, state.unlockedMilestones, stationById])

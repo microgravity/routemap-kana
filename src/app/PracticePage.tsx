@@ -7,6 +7,7 @@ import { railwayOperators, routes } from '../data/stations'
 import type { Point } from '../domain/input'
 import { splitKana, speechForKana } from '../domain/kana'
 import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress, type RouteAchievement } from '../domain/progress'
+import { nextStationIdOnRoute } from '../domain/routeNavigation'
 import { isRouteUnlocked, routeCheckpointMilestoneById } from '../domain/unlocks'
 import { evaluateFreeWriting, evaluateTrace, freeWritingFeedback, traceAdvisory, traceFeedback, type TraceGuideStroke } from '../domain/traceEvaluation'
 import { KanaStrip } from '../features/practice/KanaStrip'
@@ -60,6 +61,14 @@ export function PracticePage() {
   }
 
   const progress = reconcileProgress(state.progress[station.id], station.reading)
+  const nextRouteStationId = routeId === 'found' ? undefined : nextStationIdOnRoute(routeStationIds(routeId), station.id)
+  const nextRouteStation = nextRouteStationId ? stationById.get(nextRouteStationId) : undefined
+  const nextRouteStationProgress = nextRouteStation ? reconcileProgress(state.progress[nextRouteStation.id], nextRouteStation.reading) : undefined
+  const nextRoutePosition = nextRouteStation && nextRouteStationProgress
+    ? activeMode === 'free'
+      ? nextFreeWritingPosition(nextRouteStationProgress, nextRouteStation.reading, -1)
+      : nextUnpracticedPosition(nextRouteStationProgress, nextRouteStation.reading, -1)
+    : 0
 
   const goTo = (nextIndex: number) => {
     setReward(null)
@@ -81,6 +90,18 @@ export function PracticePage() {
     setAllowTraceOverride(false)
     setReward(null)
     setResetKey((value) => value + 1)
+  }
+
+  const goToNextStation = () => {
+    if (!nextRouteStation) return
+    setReward(null)
+    setHasInk(false)
+    setInputStrokes([])
+    setTraceMessage('')
+    setAllowTraceOverride(false)
+    setTraceGuide(null)
+    setResetKey((value) => value + 1)
+    navigate(`/practice/${nextRouteStation.id}/${nextRoutePosition}?route=${routeId}`)
   }
 
   const done = (force = false) => {
@@ -113,7 +134,7 @@ export function PracticePage() {
         notice = 'この もじは じぶんで できたと はんていしたよ！'
       }
     }
-    const result = markPositionComplete(station.id, index, activeMode === 'free' && freeWritingPassed)
+    const result = markPositionComplete(station.id, index, activeMode, activeMode === 'free' && freeWritingPassed)
     const checkpoint = result.unlockedMilestones
       .map((id) => routeCheckpointMilestoneById.get(id))
       .find((milestone) => milestone?.routeId === routeId)
@@ -196,7 +217,13 @@ export function PracticePage() {
             <p className="eyebrow">{kana} が かけたね！</p>
             <h2 id="reward-title">{reward.freeWritingPassed ? 'おてほんなし クリア！' : reward.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</h2>
             {reward.notice && <p className={`reward-notice ${activeMode === 'free' && !reward.freeWritingPassed ? 'reward-notice--try-again' : ''}`}>{reward.notice}</p>}
-            <div className="reward-actions">
+            <div className={`reward-actions ${reward.allComplete && nextRouteStation ? 'reward-actions--with-next-station' : ''}`}>
+              {reward.allComplete && nextRouteStation && (
+                <button type="button" className="primary-button icon-button reward-next-station" onClick={goToNextStation}>
+                  <MaterialIcon name="train" filled />
+                  <span>つぎの えきへ<small>{nextRouteStation.displayName}</small></span>
+                </button>
+              )}
               <button type="button" className="soft-button icon-button" onClick={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? () => goTo(0) : next}>
                 <MaterialIcon name={(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? 'replay' : 'skip_next'} />
                 {(activeMode === 'free' ? reward.allFreeWritten : reward.allComplete) ? 'もういちど かく' : 'つぎの もじ'}

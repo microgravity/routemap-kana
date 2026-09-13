@@ -62,6 +62,19 @@ export interface PracticeProgress {
   addedAt?: string
 }
 
+export type PracticeMode = 'trace' | 'free'
+
+export interface PracticeHistoryEvent {
+  id: string
+  practicedAt: string
+  stationId: string
+  stationName: string
+  kana: string
+  position: number
+  mode: PracticeMode
+  freeWritten: boolean
+}
+
 export type MilestoneHistoryKind = 'route-stamp' | 'route-complete' | 'route-master'
 
 export interface MilestoneHistoryEvent {
@@ -89,6 +102,7 @@ export interface PersistedState {
   customStations: CustomStation[]
   stationOverrides: Record<string, StationOverride>
   progress: Record<string, PracticeProgress>
+  practiceHistory: PracticeHistoryEvent[]
   unlockedMilestones: string[]
   milestoneHistory: MilestoneHistoryEvent[]
 }

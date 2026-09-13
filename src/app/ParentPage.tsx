@@ -5,6 +5,7 @@ import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperators, routes } from '../data/stations'
 import { hasGlyph } from '../data/kana'
 import { isHiraganaReading, normalizeReading, splitKana } from '../domain/kana'
+import { dailyPracticeSummaries } from '../domain/practiceHistory'
 import type { CustomStation } from '../domain/types'
 import { isRouteUnlocked } from '../domain/unlocks'
 import { useSpeech } from '../services/speech/useSpeech'
@@ -73,6 +74,7 @@ export function ParentPage() {
     ? routeStationIds(routeId).filter((id) => id !== editingStation?.id).map((id) => stationById.get(id)).filter(Boolean)
     : []
   const editableRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
+  const dailyPractice = useMemo(() => dailyPracticeSummaries(state.practiceHistory).slice(0, 31), [state.practiceHistory])
 
   const submitStation = (event: FormEvent) => {
     event.preventDefault()
@@ -142,9 +144,40 @@ export function ParentPage() {
         </div>
         {(storageWarning || status) && <div className="notice" role="status">{storageWarning ?? status}</div>}
 
+        <section className="parent-card parent-activity" aria-labelledby="daily-practice-title">
+          <p className="card-number">01</p>
+          <div className="parent-activity-heading">
+            <div>
+              <p className="eyebrow">最近31日分</p>
+              <h2 id="daily-practice-title" className="icon-heading"><MaterialIcon name="calendar_month" />毎日の練習</h2>
+            </div>
+            <p>同じ駅は、その日の中では1駅として数えます。</p>
+          </div>
+          {dailyPractice.length === 0
+            ? <div className="parent-activity-empty"><MaterialIcon name="edit_calendar" /><p><strong>これからの練習がここに並びます</strong><span>この機能を追加した後に書いた分から記録します。</span></p></div>
+            : <div className="parent-activity-list">
+              {dailyPractice.map((day) => {
+                const [year, month, date] = day.date.split('-').map(Number)
+                return (
+                  <article key={day.date} className="parent-activity-day">
+                    <header>
+                      <time dateTime={day.date}><strong>{month}月{date}日</strong><small>{year}年</small></time>
+                      <p><strong>{day.stationCount}</strong>駅 <span>・</span> <strong>{day.characterCount}</strong>文字</p>
+                    </header>
+                    <div className="parent-activity-stations"><MaterialIcon name="train" filled /><span>{day.stations.map((station) => station.name).join('、')}</span></div>
+                    <div className="parent-activity-kana" aria-label={`書いた文字：${day.kanaCounts.map(({ kana, count }) => `${kana}${count > 1 ? `${count}回` : ''}`).join('、')}`}>
+                      {day.kanaCounts.map(({ kana, count }) => <span key={kana}><b>{kana}</b>{count > 1 && <small>×{count}</small>}</span>)}
+                      {day.freeWrittenCount > 0 && <i><MaterialIcon name="hotel_class" filled />お手本なし {day.freeWrittenCount}文字</i>}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>}
+        </section>
+
         <div className="parent-grid">
           <section className="parent-card" aria-labelledby="settings-title">
-            <p className="card-number">01</p>
+            <p className="card-number">02</p>
             <h2 id="settings-title" className="icon-heading"><MaterialIcon name="tune" />使いかた</h2>
             <fieldset>
               <legend>利き手</legend>
@@ -181,7 +214,7 @@ export function ParentPage() {
           </section>
 
           <section className="parent-card parent-card--wide" aria-labelledby="station-editor-title">
-            <p className="card-number">02</p>
+            <p className="card-number">03</p>
             <h2 id="station-editor-title" className="icon-heading"><MaterialIcon name="edit" />駅を追加・編集</h2>
             <label className="field">
               <span>編集する駅</span>
@@ -228,7 +261,7 @@ export function ParentPage() {
           </section>
 
           <section className="parent-card parent-card--wide" aria-labelledby="data-title">
-            <p className="card-number">03</p>
+            <p className="card-number">04</p>
             <h2 id="data-title" className="icon-heading"><MaterialIcon name="storage" />保存とバックアップ</h2>
             <p>データはこのブラウザ内に保存されます。ブラウザデータの削除などで失われる場合があり、他の端末とは自動で同期しません。</p>
             <div className="data-actions">

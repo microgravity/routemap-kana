@@ -5,13 +5,14 @@ import type {
   CustomStation,
   MilestoneHistoryEvent,
   PersistedState,
+  PracticeHistoryEvent,
   PracticeProgress,
   StationOverride,
 } from '../../domain/types'
 import { UNLOCK_SYSTEM_VERSION } from '../../domain/unlocks'
 
 export const STORAGE_KEY = 'jibun-no-rosenzu:v1'
-export const MAX_IMPORT_BYTES = 512 * 1024
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024
 
 export const defaultSettings: AppSettings = {
   handedness: 'left',
@@ -30,6 +31,7 @@ export function defaultState(): PersistedState {
     customStations: [],
     stationOverrides: {},
     progress: {},
+    practiceHistory: [],
     unlockedMilestones: [],
     milestoneHistory: [],
   }
@@ -148,8 +150,31 @@ function validateMilestoneHistoryEvent(value: unknown): MilestoneHistoryEvent | 
   }
 }
 
+function validatePracticeHistoryEvent(value: unknown): PracticeHistoryEvent | null {
+  if (!isRecord(value)) return null
+  const id = asShortString(value.id, 180)
+  const practicedAt = asShortString(value.practicedAt, 40)
+  const stationId = asShortString(value.stationId, 120)
+  const stationName = asShortString(value.stationName, 40)
+  const kana = asShortString(value.kana, 8)
+  const mode = value.mode === 'trace' || value.mode === 'free' ? value.mode : null
+  if (!id || !practicedAt || !stationId || !stationName || !kana || !mode || !isHiraganaReading(kana) || !Number.isFinite(Date.parse(practicedAt))) return null
+  if (!Number.isInteger(value.position) || (value.position as number) < 0 || (value.position as number) > 99) return null
+  if (typeof value.freeWritten !== 'boolean' || (value.freeWritten && mode !== 'free')) return null
+  return {
+    id,
+    practicedAt,
+    stationId,
+    stationName,
+    kana: normalizeReading(kana),
+    position: value.position as number,
+    mode,
+    freeWritten: value.freeWritten,
+  }
+}
+
 export function parseBackup(text: string): PersistedState {
-  if (new Blob([text]).size > MAX_IMPORT_BYTES) throw new Error('ファイルが おおきすぎます（512KBまで）')
+  if (new Blob([text]).size > MAX_IMPORT_BYTES) throw new Error('ファイルが おおきすぎます（2MBまで）')
   let raw: unknown
   try {
     raw = JSON.parse(text)
@@ -161,12 +186,16 @@ export function parseBackup(text: string): PersistedState {
   const unlockSystemVersion = raw.unlockSystemVersion === undefined ? 1 : raw.unlockSystemVersion
   const unlockedMilestonesRaw = raw.unlockedMilestones ?? []
   const milestoneHistoryRaw = raw.milestoneHistory ?? []
+  const practiceHistoryRaw = raw.practiceHistory ?? []
   if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)
     || !Number.isInteger(unlockSystemVersion) || (unlockSystemVersion as number) < 1 || (unlockSystemVersion as number) > UNLOCK_SYSTEM_VERSION
     || !Array.isArray(unlockedMilestonesRaw)
     || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)
     || !Array.isArray(milestoneHistoryRaw) || milestoneHistoryRaw.length > 5000) {
     throw new Error('データの かたちが ただしくありません')
+  }
+  if (!Array.isArray(practiceHistoryRaw) || practiceHistoryRaw.length > 5000) {
+    throw new Error('れんしゅうりれきの データが ただしくありません')
   }
 
   const allIds = new Set(builtInStationById.keys())
@@ -214,6 +243,16 @@ export function parseBackup(text: string): PersistedState {
     milestoneHistory.push(event)
   }
 
+  const practiceHistory: PracticeHistoryEvent[] = []
+  const practiceEventIds = new Set<string>()
+  for (const value of practiceHistoryRaw) {
+    const event = validatePracticeHistoryEvent(value)
+    if (!event) throw new Error('れんしゅうりれきの データが ただしくありません')
+    if (practiceEventIds.has(event.id)) continue
+    practiceEventIds.add(event.id)
+    practiceHistory.push(event)
+  }
+
   return {
     schemaVersion: 1,
     unlockSystemVersion: unlockSystemVersion as number,
@@ -221,6 +260,7 @@ export function parseBackup(text: string): PersistedState {
     customStations,
     stationOverrides,
     progress,
+    practiceHistory,
     unlockedMilestones: [...new Set(unlockedMilestonesRaw as string[])],
     milestoneHistory,
   }

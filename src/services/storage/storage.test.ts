@@ -54,6 +54,27 @@ describe('バックアップ検証', () => {
     expect(parseBackup(JSON.stringify(oldState)).milestoneHistory).toEqual([])
   })
 
+  it('日別練習履歴がない旧データを空の履歴として読み込む', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    delete oldState.practiceHistory
+    expect(parseBackup(JSON.stringify(oldState)).practiceHistory).toEqual([])
+  })
+
+  it('書いた駅・文字・日時をバックアップで保持する', () => {
+    const state = defaultState()
+    state.practiceHistory.push({
+      id: 'practice-test-1',
+      practicedAt: '2026-09-13T00:15:00.000Z',
+      stationId: 'tokyu-ty01',
+      stationName: '渋谷',
+      kana: 'し',
+      position: 0,
+      mode: 'trace',
+      freeWritten: false,
+    })
+    expect(parseBackup(serializeBackup(state)).practiceHistory).toEqual(state.practiceHistory)
+  })
+
   it('段階解除の世代がない旧データを移行対象として読み込む', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
     delete oldState.unlockSystemVersion
