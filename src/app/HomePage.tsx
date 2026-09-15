@@ -307,6 +307,7 @@ export function HomePage() {
                     : `${selectedProgress.completed} / ${selectedProgress.stationIds.length} えき かけた`}
               </span>
               {selectedProgress.achievement !== 'none' && <button type="button" className="route-celebration-button icon-button" onClick={replaySelectedRouteCelebration}><MaterialIcon name="celebration" filled />おいわいを みる</button>}
+              <a className="route-permalink icon-button" href={`${import.meta.env.BASE_URL}routes/${encodeURIComponent(selectedRoute.id)}/`}><MaterialIcon name="list" />えきの いちらん</a>
             </div>
             <div className="route-effort-meter">
               <progress

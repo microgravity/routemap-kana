@@ -1,15 +1,50 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { routes } from './stations'
+import { publicPageAssets, routePermalinkPath } from './publicPages'
 
 describe('検索エンジン向け公開ファイル', () => {
-  const sitemap = readFileSync(resolve(process.cwd(), 'public/sitemap.xml'), 'utf8')
+  const assets = publicPageAssets('https://microgravity.github.io/routemap-kana/', '/routemap-kana/', '2026-09-15')
   const robots = readFileSync(resolve(process.cwd(), 'public/robots.txt'), 'utf8')
+  const xsl = readFileSync(resolve(process.cwd(), 'public/sitemap.xsl'), 'utf8')
   const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
 
-  it('公開URLをサイトマップへ重複なく登録する', () => {
-    const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1])
-    expect(locations).toEqual(['https://microgravity.github.io/routemap-kana/'])
+  it('索引と子サイトマップを参照形式で生成する', () => {
+    const parser = new DOMParser()
+    for (const fileName of ['sitemap.xml', 'sitemap-pages.xml', 'sitemap-routes.xml']) {
+      const document = parser.parseFromString(assets[fileName], 'application/xml')
+      expect(document.querySelector('parsererror')).toBeNull()
+      expect(assets[fileName]).toContain('href="sitemap.xsl"')
+      expect(assets[fileName]).toContain('<lastmod>2026-09-15</lastmod>')
+    }
+    expect(assets['sitemap.xml']).toContain('<sitemapindex')
+    expect(assets['sitemap.xml']).toContain('sitemap-pages.xml')
+    expect(assets['sitemap.xml']).toContain('sitemap-routes.xml')
+    expect(assets['sitemap-pages.xml']).toContain('<urlset')
+    expect(assets['sitemap-routes.xml']).toContain('<urlset')
+    expect(xsl).toContain('sm:sitemapindex')
+    expect(xsl).toContain('sm:urlset')
+  })
+
+  it('全路線の実在URLを重複・ハッシュなしで登録する', () => {
+    const locations = [...assets['sitemap-routes.xml'].matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1])
+    expect(locations).toEqual(routes.map((route) => `https://microgravity.github.io/routemap-kana/${routePermalinkPath(route.id)}`))
+    expect(new Set(locations).size).toBe(routes.length)
     expect(locations.every((location) => !location.includes('#'))).toBe(true)
+    for (const route of routes) {
+      const page = assets[`${routePermalinkPath(route.id)}index.html`]
+      expect(page).toContain(`<link rel="canonical" href="https://microgravity.github.io/routemap-kana/${routePermalinkPath(route.id)}" />`)
+      expect(page.match(/<li>/gu)).toHaveLength(route.orderedStationIds.length)
+      expect(page).toContain(`/routemap-kana/#/?route=${route.id}`)
+      expect(page).toContain("'GTM-MXG5B2NT'")
+      expect(page).not.toContain('G-CVGD2ZHNYD')
+    }
+  })
+
+  it('公開パスとURLをビルド先に合わせる', () => {
+    const rootAssets = publicPageAssets('https://example.jp/', '/', '2026-09-15')
+    expect(rootAssets['sitemap.xml']).toContain('https://example.jp/sitemap-routes.xml')
+    expect(rootAssets[`${routePermalinkPath(routes[0].id)}index.html`]).toContain('href="/#/?route=')
   })
 
   it('robots.txtからサイトマップを案内する', () => {

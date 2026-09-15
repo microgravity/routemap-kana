@@ -79,7 +79,7 @@ BASE_PATH=/repository-name/ npm run build
 
 workflowはPages設定から`base_path`を取得するため、`/<repository>/`配下でも、ユーザーサイトやカスタムドメインの`/`配下でもアセットを読み込めます。画面URLにはハッシュ方式を使い、駅画面で更新してもPagesの404になりません。
 
-検索エンジン向けのサイトマップは`public/sitemap.xml`、案内は`public/robots.txt`にあります。現在の画面遷移はハッシュ方式のため、サイトマップへ登録する正規URLはトップページだけです。将来ハッシュを使わない公開画面を追加した場合は、そのURLと更新日をサイトマップへ追記します。
+検索エンジン向けの`sitemap.xml`はビルド時に生成します。サイトマップ索引からトップページ用の`sitemap-pages.xml`と路線一覧用の`sitemap-routes.xml`へ分かれ、`public/sitemap.xsl`でブラウザ閲覧時の表を表示します。`public/robots.txt`は索引を案内します。各路線には`/routes/<既存の路線ID>/`の直接開ける駅一覧ページがあり、ホームの「えきの いちらん」から移動できます。路線データを追加すると、次のビルドで路線URLと駅一覧が自動的に増えます。ハッシュ画面はサイトマップに登録せず、既存の練習画面・進捗キーは変更しません。
 
 ### Google Search Console / Tag Manager / Analytics
 

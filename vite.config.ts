@@ -3,6 +3,21 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { publicPageAssets } from './src/data/publicPages'
+
+function publicPagesPlugin(): Plugin {
+  return {
+    name: 'public-pages-and-sitemaps',
+    generateBundle() {
+      const siteUrl = process.env.PUBLIC_SITE_URL || 'https://microgravity.github.io/routemap-kana/'
+      const basePath = process.env.BASE_PATH || '/'
+      const lastmod = new Date().toISOString().slice(0, 10)
+      for (const [fileName, source] of Object.entries(publicPageAssets(siteUrl, basePath, lastmod))) {
+        this.emitFile({ type: 'asset', fileName, source })
+      }
+    },
+  }
+}
 
 function pwaServiceWorkerPlugin(): Plugin {
   return {
@@ -38,7 +53,7 @@ function socialImageMeta(html: string): string {
 
 export default defineConfig({
   base: process.env.BASE_PATH || '/',
-  plugins: [react(), pwaServiceWorkerPlugin(), { name: 'social-image-meta', transformIndexHtml: socialImageMeta }],
+  plugins: [react(), pwaServiceWorkerPlugin(), publicPagesPlugin(), { name: 'social-image-meta', transformIndexHtml: socialImageMeta }],
   test: {
     environment: 'jsdom',
     globals: true,
