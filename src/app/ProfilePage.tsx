@@ -2,12 +2,13 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
+import { routeChoiceCampaigns } from '../config/unlockCampaigns'
 import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { formatMilestoneDate } from '../domain/milestoneHistory'
 import { buildProfileSnapshot, type ProfileRouteRecord } from '../domain/profile'
 import type { MilestoneHistoryEvent } from '../domain/types'
-import { isOperatorUnlocked, isRouteUnlocked, metroUnlockStatus, routeCheckpointMilestones, unlockMilestoneById, unlockProgress } from '../domain/unlocks'
+import { isOperatorUnlocked, isRouteUnlocked, routeChoiceStatus, routeCheckpointMilestones, unlockMilestoneById, unlockProgress } from '../domain/unlocks'
 import { useAppState } from './AppState'
 
 const profileKana = [...basicKanaRows.flat(), ...voicedKanaRows.flat(), ...smallKanaRows.flat()]
@@ -33,7 +34,10 @@ export function ProfilePage() {
   )
   const learnedKanaCount = profileKana.filter((kana) => profile.practicedKana.has(kana)).length
   const medals = profile.routes.filter((route) => route.unlocked && route.achievement !== 'none')
-  const metroStatus = metroUnlockStatus(state.unlockedMilestones)
+  const availableRouteTickets = routeChoiceCampaigns.reduce(
+    (total, campaign) => total + routeChoiceStatus(campaign, state.unlockedMilestones).availableChoices,
+    0,
+  )
   const history = useMemo(
     () => [...state.milestoneHistory].reverse().sort((left, right) => Date.parse(right.achievedAt) - Date.parse(left.achievedAt)),
     [state.milestoneHistory],
@@ -62,7 +66,7 @@ export function ProfilePage() {
           <SummaryCard icon="star" value={profile.completedStations} label="かけた えき" note={`${profile.startedStations - profile.completedStations}えき れんしゅうちゅう`} tone="yellow" />
           <SummaryCard icon="draw" value={profile.practicedPositions} label="かいた もじ" note={`おてほんなし ${profile.masteredStations}えき`} tone="aqua" />
           <SummaryCard icon="spellcheck" value={learnedKanaCount} label="れんしゅうした ひらがな" note={`${profileKana.length}もじの ひょう`} tone="orange" />
-          <SummaryCard icon="approval" value={profile.earnedStamps} label="くかんスタンプ" note={metroStatus.availableChoices > 0 ? `ろせんきっぷ ${metroStatus.availableChoices}まい` : '25%ごとに もらえるよ'} tone="purple" />
+          <SummaryCard icon="approval" value={profile.earnedStamps} label="くかんスタンプ" note={availableRouteTickets > 0 ? `ろせんきっぷ ${availableRouteTickets}まい` : '25%ごとに もらえるよ'} tone="purple" />
         </section>
 
         <section className="profile-section next-goals" aria-labelledby="next-goals-title">

@@ -1,11 +1,12 @@
 import { builtInStationById, railwayOperators, routes } from '../data/stations'
 import { completePosition, freshProgress } from './progress'
 import type { PracticeProgress } from './types'
+import { routeChoiceCampaignByOperatorId } from '../config/unlockCampaigns'
 import {
   TOKYO_METRO_CHOICE_ROUTE_IDS,
   TOKYO_METRO_UNLOCK_MILESTONE_ID,
   UNLOCK_SYSTEM_VERSION,
-  grantMetroRouteChoice,
+  grantRouteChoice,
   grantEarnedMilestones,
   isOperatorUnlocked,
   isRouteUnlocked,
@@ -15,6 +16,7 @@ import {
   migrateUnlockMilestones,
   unlockMilestoneById,
   unlockProgress,
+  routeChoiceStatus,
 } from './unlocks'
 
 function completedProgressFor(stationId: string) {
@@ -85,6 +87,7 @@ describe('コンテンツ解除', () => {
   })
 
   it('メトロは短い2路線から始まり、文字位置50%でスタンプ2個と選択きっぷを得る', () => {
+    const campaign = routeChoiceCampaignByOperatorId.get('tokyo-metro')!
     const operatorUnlocked = [TOKYO_METRO_UNLOCK_MILESTONE_ID]
     const ginza = routes.find((route) => route.id === 'metro-ginza')!
     const hanzomon = routes.find((route) => route.id === 'metro-hanzomon')!
@@ -98,19 +101,21 @@ describe('コンテンツ解除', () => {
       stationById: builtInStationById,
       progress: progressForRouteRatio('metro-hanzomon', 0.5),
     })
-    expect(metroUnlockStatus(earned)).toMatchObject({ earnedStamps: 2, unlockedChoices: 0, availableChoices: 1 })
-    const selected = grantMetroRouteChoice(earned, 'metro-marunouchi')
+    expect(routeChoiceStatus(campaign, earned)).toMatchObject({ earnedStamps: 2, unlockedChoices: 0, availableChoices: 1 })
+    const selected = grantRouteChoice(earned, campaign, 'metro-marunouchi')
     expect(isRouteUnlocked(marunouchi, railwayOperators, selected)).toBe(true)
-    expect(metroUnlockStatus(selected)).toMatchObject({ earnedStamps: 2, unlockedChoices: 1, availableChoices: 0, nextStampTarget: 5 })
+    expect(routeChoiceStatus(campaign, selected)).toMatchObject({ earnedStamps: 2, unlockedChoices: 1, availableChoices: 0, nextStampTarget: 5 })
   })
 
   it('路線選択きっぷは2個、その後は3個ごとのスタンプで増える', () => {
+    const campaign = routeChoiceCampaignByOperatorId.get('tokyo-metro')!
     const ids = metroRouteCheckpointMilestones.slice(0, 8).map((milestone) => milestone.id)
-    expect(metroUnlockStatus(ids)).toMatchObject({ earnedStamps: 8, availableChoices: 3 })
-    const first = grantMetroRouteChoice(ids, 'metro-marunouchi')
-    const second = grantMetroRouteChoice(first, 'metro-hibiya')
-    const third = grantMetroRouteChoice(second, 'metro-tozai')
-    expect(metroUnlockStatus(third)).toMatchObject({ earnedStamps: 8, unlockedChoices: 3, availableChoices: 0, nextStampTarget: 11 })
+    expect(routeChoiceStatus(campaign, ids)).toMatchObject({ earnedStamps: 8, availableChoices: 3 })
+    const first = grantRouteChoice(ids, campaign, 'metro-marunouchi')
+    const second = grantRouteChoice(first, campaign, 'metro-hibiya')
+    const third = grantRouteChoice(second, campaign, 'metro-tozai')
+    expect(routeChoiceStatus(campaign, third)).toMatchObject({ earnedStamps: 8, unlockedChoices: 3, availableChoices: 0, nextStampTarget: 11 })
+    expect(metroUnlockStatus(third)).toEqual(routeChoiceStatus(campaign, third))
   })
 
   it('旧版ですでにメトロ解除済みなら全路線を維持し、新版の新規解除では段階制にする', () => {

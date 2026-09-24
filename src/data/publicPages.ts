@@ -1,5 +1,5 @@
-import { builtInStationById, railwayOperatorById, routes } from './stations'
-import type { Route } from '../domain/types'
+import { builtInStationById, railwayOperatorById, routes } from './stations.ts'
+import type { Route } from '../domain/types.ts'
 
 const sitemapNamespace = 'http://www.sitemaps.org/schemas/sitemap/0.9'
 

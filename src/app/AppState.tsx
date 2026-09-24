@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { routeChoiceCampaignByOperatorId } from '../config/unlockCampaigns'
 import { builtInStations, routes } from '../data/stations'
 import { normalizeReading, splitKana } from '../domain/kana'
 import { appendMilestoneHistory, milestoneEventsForPracticeResult, recoverRouteAchievementHistory } from '../domain/milestoneHistory'
 import { appendPracticeHistory, createPracticeHistoryEvent } from '../domain/practiceHistory'
 import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import type { AppSettings, AppState, CustomStation, PersistedState, PracticeMode, Station, StationOverride } from '../domain/types'
-import { grantEarnedMilestones, grantMetroRouteChoice, migrateUnlockMilestones, routeCheckpointMilestoneById, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
+import { grantEarnedMilestones, grantRouteChoice, migrateUnlockMilestones, routeCheckpointMilestoneById, UNLOCK_SYSTEM_VERSION } from '../domain/unlocks'
 import { defaultState, loadState, saveState } from '../services/storage/storage'
 
 interface AppStateValue {
@@ -164,7 +165,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const unlockRoute = useCallback((routeId: string) => {
     setState((current) => {
       const earned = withEarnedMilestones(current)
-      const unlockedMilestones = grantMetroRouteChoice(earned.unlockedMilestones, routeId)
+      const route = routes.find((candidate) => candidate.id === routeId)
+      const campaign = route ? routeChoiceCampaignByOperatorId.get(route.operatorId) : undefined
+      if (!campaign) return earned
+      const unlockedMilestones = grantRouteChoice(earned.unlockedMilestones, campaign, routeId)
       return unlockedMilestones.length === earned.unlockedMilestones.length
         ? earned
         : { ...earned, unlockedMilestones }

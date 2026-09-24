@@ -1,0 +1,49 @@
+.route-picker { padding: 8px clamp(22px, 3.5vw, 42px) 16px; display: grid; gap: 14px; border-top: 1px solid rgba(118, 108, 83, .1); }
+.route-picker-group { min-width: 0; display: grid; gap: 7px; }
+.route-picker-label { margin: 0; display: flex; align-items: center; gap: 8px; color: #6f675a; font-size: .76rem; font-weight: 900; letter-spacing: .05em; }
+.route-picker-label span { width: 23px; height: 23px; display: inline-grid; place-items: center; border-radius: 50%; background: #e8e1d3; color: #4f493f; font-size: .7rem; }
+.operator-tabs, .route-tabs { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-color: #c9c0ae transparent; }
+.operator-tab { min-width: min(260px, 70vw); min-height: 76px; padding: 10px 16px; display: flex; align-items: center; gap: 14px; border: 2px solid rgba(118, 108, 83, .14); border-radius: 20px; background: rgba(255, 255, 255, .58); color: var(--ink); text-align: left; cursor: pointer; scroll-snap-align: start; }
+.operator-tab--active { border-color: var(--operator-color); background: #fff; box-shadow: 0 5px 16px rgba(64, 57, 43, .09); }
+.operator-tab--locked { border-style: dashed; background: #f1ede4; color: #68675f; cursor: default; }
+.operator-tab--locked:disabled { opacity: 1; }
+.operator-tab-lock { width: 52px; height: 52px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 17px; background: #ded8cc; color: #69665e; }
+.operator-tab-lock .material-icon { font-size: 1.7rem; }
+.operator-tab-mark { position: relative; width: 52px; height: 22px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; }
+.operator-tab-mark::before { content: ''; position: absolute; left: 6px; right: 6px; top: 9px; height: 4px; border-radius: 99px; background: var(--operator-color); }
+.operator-tab-mark span { z-index: 1; width: 15px; height: 15px; border: 4px solid var(--operator-color); border-radius: 50%; background: #fff; }
+.operator-tab-copy { min-width: 0; display: grid; gap: 3px; }
+.operator-tab-copy strong { font-size: 1.05rem; }
+.operator-tab-copy small { color: var(--muted); font-size: .72rem; font-weight: 800; }
+.route-tabs { padding: 0 0 2px; }
+.route-tab { position: relative; min-height: 68px; padding: 8px 18px; border: 2px solid transparent; border-radius: 19px; background: transparent; font-size: 1.02rem; font-weight: 900; cursor: pointer; white-space: nowrap; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 9px; text-align: left; scroll-snap-align: start; }
+.route-tab span { grid-row: 1 / 3; display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--route-color); }
+.route-tab strong { font-size: .98rem; }
+.route-tab small { color: var(--muted); font-size: .7rem; }
+.route-tab--active { border-color: var(--route-color); background: #fff; }
+.route-tab:has(.route-tab-achievement) { padding-right: 49px; }
+.route-tab-achievement { position: absolute; right: 10px; top: 50%; min-width: 31px; height: 31px; transform: translateY(-50%); display: grid; place-items: center; border-radius: 50%; background: #fff2b8; color: #c58a00; font-size: 1.05rem; font-style: normal; box-shadow: 0 3px 9px rgba(99, 72, 12, .15); }
+.route-tab-achievement--master { min-width: 38px; padding-right: 4px; background: #f0dffa; color: #8650aa; font-size: .87rem; letter-spacing: -6px; }
+
+.route-unlock-panel { display: grid; gap: 12px; padding: 14px; border: 2px dashed #c8bfae; border-radius: 20px; background: #f5f1e8; }
+.route-unlock-panel--ready { border-style: solid; border-color: #d29a18; background: #fff6ce; box-shadow: 0 6px 18px rgba(111, 76, 8, .1); }
+.route-unlock-heading { display: flex; align-items: center; gap: 12px; }
+.route-unlock-heading > div { display: grid; gap: 2px; }
+.route-unlock-heading strong { font-size: .98rem; }
+.route-unlock-heading small { color: var(--muted); font-size: .75rem; font-weight: 900; }
+.route-ticket { width: 44px; height: 44px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 14px; background: #e4ddd0; color: #716b60; }
+.route-unlock-panel--ready .route-ticket { background: #f2c64d; color: #62460a; }
+.locked-campaign-routes { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.locked-campaign-routes button { min-width: 176px; min-height: 58px; display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid #d7cfbd; border-radius: 15px; background: #fffdf7; color: var(--ink); text-align: left; cursor: pointer; }
+.locked-campaign-routes button:disabled { background: #ece8df; color: #77736b; cursor: default; opacity: .82; }
+.locked-campaign-routes button > i { width: 10px; height: 34px; border-radius: 99px; background: var(--route-color); }
+.locked-campaign-routes button > span { display: grid; gap: 1px; }
+.locked-campaign-routes button strong { font-size: .84rem; }
+.locked-campaign-routes button small { color: var(--muted); font-size: .68rem; font-weight: 800; }
+.locked-campaign-routes button .material-icon { color: #bd8511; }
+.locked-campaign-routes button:disabled .material-icon { color: #858178; }
+
+@media (max-width: 700px) {
+  .route-picker { padding-inline: 20px; }
+  .operator-tab { min-width: min(230px, 78vw); }
+}

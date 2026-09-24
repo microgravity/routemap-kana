@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { publicPageAssets } from './src/data/publicPages'
+import { publicPageAssets } from './src/data/publicPages.ts'
 
 function publicPagesPlugin(): Plugin {
   return {
@@ -54,6 +54,15 @@ function socialImageMeta(html: string): string {
 export default defineConfig({
   base: process.env.BASE_PATH || '/',
   plugins: [react(), pwaServiceWorkerPlugin(), publicPagesPlugin(), { name: 'social-image-meta', transformIndexHtml: socialImageMeta }],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: 'vendor', test: /node_modules[\\/]/u }],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

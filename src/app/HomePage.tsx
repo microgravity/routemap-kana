@@ -4,7 +4,8 @@ import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { completedStationCount, routeAchievementLevel, routeEffortProgress, type RouteAchievement } from '../domain/progress'
-import { isOperatorUnlocked, isRouteUnlocked, metroUnlockStatus, ROUTE_CHECKPOINT_RATIOS, routeCheckpointMilestoneById, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
+import { isOperatorUnlocked, isRouteUnlocked, ROUTE_CHECKPOINT_RATIOS, routeCheckpointMilestoneById, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
+import { RailwayPicker } from '../features/route-picker/RailwayPicker'
 import { RouteMap } from '../features/route-map/RouteMap'
 import { useAppState } from './AppState'
 
@@ -40,10 +41,6 @@ export function HomePage() {
   })
   const selectedOperator = railwayOperatorById.get(selectedRoute.operatorId) ?? railwayOperators[0]
   const visibleRoutes = routes.filter((route) => route.operatorId === selectedOperator.id && isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
-  const lockedMetroRoutes = selectedOperator.id === 'tokyo-metro'
-    ? routes.filter((route) => route.operatorId === 'tokyo-metro' && !isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
-    : []
-  const metroStatus = metroUnlockStatus(state.unlockedMilestones)
   const routeCelebrations = manualRouteCelebration ? [manualRouteCelebration] : unlockedRouteCelebrations
   const activeRouteCelebration = routeCelebrationDismissed ? undefined : routeCelebrations[routeCelebrationIndex]
   const activeCelebrationRoute = routes.find((route) => route.id === activeRouteCelebration?.routeId)
@@ -113,8 +110,10 @@ export function HomePage() {
   }
 
   const unlockAndChooseRoute = (routeId: string) => {
+    const route = routes.find((candidate) => candidate.id === routeId)
+    if (!route) return
     unlockRoute(routeId)
-    setLastRouteByOperator((current) => ({ ...current, 'tokyo-metro': routeId }))
+    setLastRouteByOperator((current) => ({ ...current, [route.operatorId]: routeId }))
     setParams({ route: routeId })
     setZoom(1)
     setMapResetKey((value) => value + 1)
@@ -198,104 +197,20 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="route-picker">
-            <div className="route-picker-group">
-              <p className="route-picker-label"><span>1</span>てつどうがいしゃ</p>
-              <nav className="operator-tabs" aria-label="てつどうがいしゃを えらぶ">
-                {railwayOperators.map((operator) => {
-                  const progress = operatorProgress.get(operator.id) ?? { completedRoutes: 0, masteredRoutes: 0 }
-                  const unlocked = isOperatorUnlocked(operator, state.unlockedMilestones)
-                  const accessProgress = operatorUnlockProgress.get(operator.id)
-                  return (
-                    <button
-                      key={operator.id}
-                      type="button"
-                      className={`${operator.id === selectedOperator.id ? 'operator-tab operator-tab--active' : 'operator-tab'} ${unlocked ? '' : 'operator-tab--locked'}`.trim()}
-                      style={{ '--operator-color': operator.color } as React.CSSProperties}
-                      aria-pressed={operator.id === selectedOperator.id}
-                      disabled={!unlocked}
-                      onClick={() => chooseOperator(operator.id)}
-                    >
-                      {unlocked
-                        ? <i className="operator-tab-mark" aria-hidden="true"><span /><span /><span /></i>
-                        : <span className="operator-tab-lock" aria-hidden="true"><MaterialIcon name="lock" filled /></span>}
-                      <span className="operator-tab-copy">
-                        <strong>{operator.name}</strong>
-                        <small>
-                          {unlocked
-                            ? operator.id === 'tokyo-metro'
-                              ? <>スタンプ {metroStatus.earnedStamps}こ{metroStatus.availableChoices > 0 && `　🎫${metroStatus.availableChoices}まい`}</>
-                              : <>{progress.completedRoutes}/{operator.routeIds.length}ろせん クリア{progress.masteredRoutes > 0 && `　★★${progress.masteredRoutes}`}</>
-                            : <>{accessProgress?.completed ?? 0}/{accessProgress?.total ?? 0}ろせん　あと{Math.max(0, (accessProgress?.total ?? 0) - (accessProgress?.completed ?? 0))}ろせん</>}
-                        </small>
-                      </span>
-                    </button>
-                  )
-                })}
-              </nav>
-            </div>
-            <div className="route-picker-group">
-              <p className="route-picker-label"><span>2</span>ろせん</p>
-              <nav className="route-tabs" aria-label={`${selectedOperator.name}の ろせんを えらぶ`}>
-                {visibleRoutes.map((route) => {
-                  const progress = routeProgress.get(route.id) ?? {
-                    stationIds: [], completed: 0, achievement: 'none' as const,
-                    effort: { practicedPositions: 0, totalPositions: 0, ratio: 0 }, checkpoints: 0,
-                  }
-                  return (
-                    <button
-                      key={route.id}
-                      type="button"
-                      className={route.id === selectedRoute.id ? 'route-tab route-tab--active' : 'route-tab'}
-                      style={{ '--route-color': route.color } as React.CSSProperties}
-                      aria-pressed={route.id === selectedRoute.id}
-                      onClick={() => chooseRoute(route.id)}
-                    >
-                      <span aria-hidden="true" />
-                      <strong>{route.name}</strong>
-                      <small>{progress.completed}/{progress.stationIds.length}{progress.checkpoints > 0 && `　●${progress.checkpoints}/4`}</small>
-                      {progress.achievement !== 'none' && (
-                        <i className={`route-tab-achievement route-tab-achievement--${progress.achievement}`} aria-label={progress.achievement === 'master' ? 'ろせんマスター' : 'ろせんクリア'}>
-                          {progress.achievement === 'master' ? '★★' : '★'}
-                        </i>
-                      )}
-                    </button>
-                  )
-                })}
-              </nav>
-            </div>
-            {selectedOperator.id === 'tokyo-metro' && lockedMetroRoutes.length > 0 && (
-              <section className={`metro-unlock-panel ${metroStatus.availableChoices > 0 ? 'metro-unlock-panel--ready' : ''}`} aria-labelledby="metro-unlock-heading">
-                <div className="metro-unlock-heading">
-                  <span className="metro-ticket" aria-hidden="true"><MaterialIcon name={metroStatus.availableChoices > 0 ? 'confirmation_number' : 'lock'} filled /></span>
-                  <div>
-                    <strong id="metro-unlock-heading">{metroStatus.availableChoices > 0 ? 'すきな ろせんを ひらけるよ！' : 'くかんスタンプを あつめよう'}</strong>
-                    <small>
-                      スタンプ {metroStatus.earnedStamps}こ
-                      {metroStatus.availableChoices > 0
-                        ? `　きっぷ ${metroStatus.availableChoices}まい`
-                        : metroStatus.nextStampTarget ? `　あと ${Math.max(0, metroStatus.nextStampTarget - metroStatus.earnedStamps)}こ` : ''}
-                    </small>
-                  </div>
-                </div>
-                <div className="metro-locked-routes">
-                  {lockedMetroRoutes.map((route) => (
-                    <button
-                      key={route.id}
-                      type="button"
-                      style={{ '--route-color': route.color } as React.CSSProperties}
-                      disabled={metroStatus.availableChoices < 1}
-                      onClick={() => unlockAndChooseRoute(route.id)}
-                    >
-                      <i aria-hidden="true" />
-                      <span><strong>{route.name}</strong><small>{route.orderedStationIds.length}えき</small></span>
-                      <MaterialIcon name={metroStatus.availableChoices > 0 ? 'lock_open' : 'lock'} filled={metroStatus.availableChoices > 0} />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+          <RailwayPicker
+            operators={railwayOperators}
+            routes={routes}
+            selectedOperator={selectedOperator}
+            selectedRoute={selectedRoute}
+            visibleRoutes={visibleRoutes}
+            routeProgress={routeProgress}
+            operatorProgress={operatorProgress}
+            operatorUnlockProgress={operatorUnlockProgress}
+            unlockedMilestones={state.unlockedMilestones}
+            onChooseOperator={chooseOperator}
+            onChooseRoute={chooseRoute}
+            onUnlockRoute={unlockAndChooseRoute}
+          />
           <div className={`route-progress route-progress--${selectedProgress.achievement}`} style={{ '--route-color': selectedRoute.color } as React.CSSProperties}>
             <div className="route-progress-copy">
               <strong>{selectedRoute.name}</strong>

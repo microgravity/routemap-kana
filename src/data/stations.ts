@@ -1,8 +1,8 @@
-import type { Route } from '../domain/types'
-import { assertValidRailwayCatalog, validateRailwayCatalog, type RailwayDataset } from './railwayCatalogTypes'
-import { sotetsuDataset, SOTETSU_OFFICIAL_STATION_COUNT, SOTETSU_ROUTE_COUNT } from './sotetsu'
-import { tokyoMetroDataset, TOKYO_METRO_OFFICIAL_STATION_COUNT, TOKYO_METRO_ROUTE_COUNT } from './tokyoMetro'
-import { tokyuDataset, TOKYU_OFFICIAL_STATION_COUNT, TOKYU_ROUTE_COUNT } from './tokyu'
+import type { Route } from '../domain/types.ts'
+import { assertValidRailwayCatalog, validateRailwayCatalog, type RailwayDataset } from './railwayCatalogTypes.ts'
+import { sotetsuDataset, SOTETSU_OFFICIAL_STATION_COUNT, SOTETSU_ROUTE_COUNT } from './sotetsu.ts'
+import { tokyoMetroDataset, TOKYO_METRO_OFFICIAL_STATION_COUNT, TOKYO_METRO_ROUTE_COUNT } from './tokyoMetro.ts'
+import { tokyuDataset, TOKYU_OFFICIAL_STATION_COUNT, TOKYU_ROUTE_COUNT } from './tokyu.ts'
 
 export {
   SOTETSU_OFFICIAL_STATION_COUNT,

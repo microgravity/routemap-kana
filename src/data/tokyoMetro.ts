@@ -1,6 +1,7 @@
-import type { RailwayOperator, Route, Station } from '../domain/types'
-import { metroRouteUnlockMilestoneId, TOKYO_METRO_UNLOCK_MILESTONE_ID } from '../domain/unlocks'
-import type { RailwayDataset } from './railwayCatalogTypes'
+import { TOKYO_METRO_UNLOCK_MILESTONE_ID } from '../config/unlockCampaigns.ts'
+import type { Station } from '../domain/types.ts'
+import { defineRailwayDataset } from './railwayCatalogTypes.ts'
+import { tokyoMetroRoutes } from './operators/tokyoMetro/routes.ts'
 
 export const TOKYO_METRO_SOURCE = 'https://www.tokyometro.jp/station/'
 export const TOKYO_METRO_ROUTE_COUNT = 9
@@ -153,87 +154,11 @@ export const tokyoMetroStations: Station[] = [
   metroStation('tokyometro-higashi-shinjuku', '東新宿', 'ひがししんじゅく'),
   metroStation('tokyometro-kita-sando', '北参道', 'きたさんどう'),
 ]
-export const tokyoMetroRoutes: Route[] = [
-  {
-    id: 'metro-ginza', operatorId: 'tokyo-metro', name: 'ぎんざせん', color: '#f39700',
-    segmentLabel: 'しぶや 〜 あさくさ（19えき）',
-    orderedStationIds: ['tokyu-ty01', 'tokyometro-omote-sando', 'tokyometro-gaiemmae', 'tokyometro-aoyama-itchome', 'tokyometro-akasaka-mitsuke', 'tokyometro-tameike-sanno', 'tokyometro-toranomon', 'tokyometro-shimbashi', 'tokyometro-ginza', 'tokyometro-kyobashi', 'tokyometro-nihombashi', 'tokyometro-mitsukoshimae', 'tokyometro-kanda', 'tokyometro-suehirocho', 'tokyometro-ueno-hirokoji', 'tokyometro-ueno', 'tokyometro-inaricho', 'tokyometro-tawaramachi', 'tokyometro-asakusa'],
-    stationCodes: ['G01', 'G02', 'G03', 'G04', 'G05', 'G06', 'G07', 'G08', 'G09', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_ginza/index.html',
+export const tokyoMetroDataset = defineRailwayDataset({
+  datasetId: 'jp.dataset.tokyo-metro', idScheme: 'legacy-v1', operator: {
+    id: 'tokyo-metro', name: 'とうきょうメトロ', displayName: '東京地下鉄', shortName: 'とうきょうメトロ',
+    color: '#149b95', sourceUrl: TOKYO_METRO_SOURCE, unlockMilestoneId: TOKYO_METRO_UNLOCK_MILESTONE_ID,
   },
-  {
-    id: 'metro-marunouchi', operatorId: 'tokyo-metro', name: 'まるのうちせん', color: '#e60012',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-marunouchi'),
-    segmentLabel: 'おぎくぼ・ほうなんちょう 〜 いけぶくろ（28えき）',
-    orderedStationIds: ['tokyometro-ogikubo', 'tokyometro-minami-asagaya', 'tokyometro-shin-koenji', 'tokyometro-higashi-koenji', 'tokyometro-shin-nakano', 'tokyometro-honancho', 'tokyometro-nakano-fujimicho', 'tokyometro-nakano-shimbashi', 'tokyometro-nakano-sakaue', 'tokyometro-nishi-shinjuku', 'tokyometro-shinjuku', 'tokyometro-shinjuku-sanchome', 'tokyometro-shinjuku-gyoemmae', 'tokyometro-yotsuya-sanchome', 'tokyometro-yotsuya', 'tokyometro-akasaka-mitsuke', 'tokyometro-kokkai-gijidomae', 'tokyometro-kasumigaseki', 'tokyometro-ginza', 'tokyometro-tokyo', 'tokyometro-otemachi', 'tokyometro-awajicho', 'tokyometro-ochanomizu', 'tokyometro-hongo-sanchome', 'tokyometro-korakuen', 'tokyometro-myogadani', 'tokyometro-shin-otsuka', 'tokyometro-ikebukuro'],
-    stationCodes: ['M01', 'M02', 'M03', 'M04', 'M05', 'm03', 'm04', 'm05', 'M06', 'M07', 'M08', 'M09', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16', 'M17', 'M18', 'M19', 'M20', 'M21', 'M22', 'M23', 'M24', 'M25'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_marunouchi/index.html',
-    note: 'なかのさかうえで ほうなんちょうほうめんへ えだわかれします。このろせんずでは ぜんえきを ひとつのならびで ひょうじします。',
-  },
-  {
-    id: 'metro-hibiya', operatorId: 'tokyo-metro', name: 'ひびやせん', color: '#9caeb7',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-hibiya'),
-    segmentLabel: 'なかめぐろ 〜 きたせんじゅ（22えき）',
-    orderedStationIds: ['tokyu-ty03', 'tokyometro-ebisu', 'tokyometro-hiro-o', 'tokyometro-roppongi', 'tokyometro-kamiyacho', 'tokyometro-toranomon-hills', 'tokyometro-kasumigaseki', 'tokyometro-hibiya', 'tokyometro-ginza', 'tokyometro-higashi-ginza', 'tokyometro-tsukiji', 'tokyometro-hatchobori', 'tokyometro-kayabacho', 'tokyometro-ningyocho', 'tokyometro-kodemmacho', 'tokyometro-akihabara', 'tokyometro-naka-okachimachi', 'tokyometro-ueno', 'tokyometro-iriya', 'tokyometro-minowa', 'tokyometro-minami-senju', 'tokyometro-kita-senju'],
-    stationCodes: ['H01', 'H02', 'H03', 'H04', 'H05', 'H06', 'H07', 'H08', 'H09', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16', 'H17', 'H18', 'H19', 'H20', 'H21', 'H22'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_hibiya/index.html',
-  },
-  {
-    id: 'metro-tozai', operatorId: 'tokyo-metro', name: 'とうざいせん', color: '#00a7db',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-tozai'),
-    segmentLabel: 'なかの 〜 にしふなばし（23えき）',
-    orderedStationIds: ['tokyometro-nakano', 'tokyometro-ochiai', 'tokyometro-takadanobaba', 'tokyometro-waseda', 'tokyometro-kagurazaka', 'tokyometro-iidabashi', 'tokyometro-kudanshita', 'tokyometro-takebashi', 'tokyometro-otemachi', 'tokyometro-nihombashi', 'tokyometro-kayabacho', 'tokyometro-monzen-nakacho', 'tokyometro-kiba', 'tokyometro-toyocho', 'tokyometro-minami-sunamachi', 'tokyometro-nishi-kasai', 'tokyometro-kasai', 'tokyometro-urayasu', 'tokyometro-minami-gyotoku', 'tokyometro-gyotoku', 'tokyometro-myoden', 'tokyometro-baraki-nakayama', 'tokyometro-nishi-funabashi'],
-    stationCodes: ['T01', 'T02', 'T03', 'T04', 'T05', 'T06', 'T07', 'T08', 'T09', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19', 'T20', 'T21', 'T22', 'T23'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_tozai/index.html',
-  },
-  {
-    id: 'metro-chiyoda', operatorId: 'tokyo-metro', name: 'ちよだせん', color: '#009944',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-chiyoda'),
-    segmentLabel: 'よよぎうえはら 〜 きたあやせ（20えき）',
-    orderedStationIds: ['tokyometro-yoyogi-uehara', 'tokyometro-yoyogi-koen', 'tokyometro-meiji-jingumae', 'tokyometro-omote-sando', 'tokyometro-nogizaka', 'tokyometro-akasaka', 'tokyometro-kokkai-gijidomae', 'tokyometro-kasumigaseki', 'tokyometro-hibiya', 'tokyometro-nijubashimae', 'tokyometro-otemachi', 'tokyometro-shin-ochanomizu', 'tokyometro-yushima', 'tokyometro-nezu', 'tokyometro-sendagi', 'tokyometro-nishi-nippori', 'tokyometro-machiya', 'tokyometro-kita-senju', 'tokyometro-ayase', 'tokyometro-kita-ayase'],
-    stationCodes: ['C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15', 'C16', 'C17', 'C18', 'C19', 'C20'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_chiyoda/index.html',
-  },
-  {
-    id: 'metro-yurakucho', operatorId: 'tokyo-metro', name: 'ゆうらくちょうせん', color: '#c1a470',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-yurakucho'),
-    segmentLabel: 'わこうし 〜 しんきば（24えき）',
-    orderedStationIds: ['tokyometro-wakoshi', 'tokyometro-chikatetsu-narimasu', 'tokyometro-chikatetsu-akatsuka', 'tokyometro-heiwadai', 'tokyometro-hikawadai', 'tokyometro-kotake-mukaihara', 'tokyometro-senkawa', 'tokyometro-kanamecho', 'tokyometro-ikebukuro', 'tokyometro-higashi-ikebukuro', 'tokyometro-gokokuji', 'tokyometro-edogawabashi', 'tokyometro-iidabashi', 'tokyometro-ichigaya', 'tokyometro-kojimachi', 'tokyometro-nagatacho', 'tokyometro-sakuradamon', 'tokyometro-yurakucho', 'tokyometro-ginza-itchome', 'tokyometro-shintomicho', 'tokyometro-tsukishima', 'tokyometro-toyosu', 'tokyometro-tatsumi', 'tokyometro-shin-kiba'],
-    stationCodes: ['Y01', 'Y02', 'Y03', 'Y04', 'Y05', 'Y06', 'Y07', 'Y08', 'Y09', 'Y10', 'Y11', 'Y12', 'Y13', 'Y14', 'Y15', 'Y16', 'Y17', 'Y18', 'Y19', 'Y20', 'Y21', 'Y22', 'Y23', 'Y24'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_yurakucho/index.html',
-  },
-  {
-    id: 'metro-hanzomon', operatorId: 'tokyo-metro', name: 'はんぞうもんせん', color: '#9b7cb6',
-    segmentLabel: 'しぶや 〜 おしあげ（14えき）',
-    orderedStationIds: ['tokyu-ty01', 'tokyometro-omote-sando', 'tokyometro-aoyama-itchome', 'tokyometro-nagatacho', 'tokyometro-hanzomon', 'tokyometro-kudanshita', 'tokyometro-jimbocho', 'tokyometro-otemachi', 'tokyometro-mitsukoshimae', 'tokyometro-suitengumae', 'tokyometro-kiyosumi-shirakawa', 'tokyometro-sumiyoshi', 'tokyometro-kinshicho', 'tokyometro-oshiage'],
-    stationCodes: ['Z01', 'Z02', 'Z03', 'Z04', 'Z05', 'Z06', 'Z07', 'Z08', 'Z09', 'Z10', 'Z11', 'Z12', 'Z13', 'Z14'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_hanzomon/index.html',
-  },
-  {
-    id: 'metro-namboku', operatorId: 'tokyo-metro', name: 'なんぼくせん', color: '#00ada9',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-namboku'),
-    segmentLabel: 'めぐろ 〜 あかばねいわぶち（19えき）',
-    orderedStationIds: ['tokyu-mg01', 'tokyometro-shirokanedai', 'tokyometro-shirokane-takanawa', 'tokyometro-azabu-juban', 'tokyometro-roppongi-itchome', 'tokyometro-tameike-sanno', 'tokyometro-nagatacho', 'tokyometro-yotsuya', 'tokyometro-ichigaya', 'tokyometro-iidabashi', 'tokyometro-korakuen', 'tokyometro-todaimae', 'tokyometro-hon-komagome', 'tokyometro-komagome', 'tokyometro-nishigahara', 'tokyometro-oji', 'tokyometro-oji-kamiya', 'tokyometro-shimo', 'tokyometro-akabane-iwabuchi'],
-    stationCodes: ['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07', 'N08', 'N09', 'N10', 'N11', 'N12', 'N13', 'N14', 'N15', 'N16', 'N17', 'N18', 'N19'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_namboku/index.html',
-  },
-  {
-    id: 'metro-fukutoshin', operatorId: 'tokyo-metro', name: 'ふくとしんせん', color: '#bb641d',
-    unlockMilestoneId: metroRouteUnlockMilestoneId('metro-fukutoshin'),
-    segmentLabel: 'わこうし 〜 しぶや（16えき）',
-    orderedStationIds: ['tokyometro-wakoshi', 'tokyometro-chikatetsu-narimasu', 'tokyometro-chikatetsu-akatsuka', 'tokyometro-heiwadai', 'tokyometro-hikawadai', 'tokyometro-kotake-mukaihara', 'tokyometro-senkawa', 'tokyometro-kanamecho', 'tokyometro-ikebukuro', 'tokyometro-zoshigaya', 'tokyometro-nishi-waseda', 'tokyometro-higashi-shinjuku', 'tokyometro-shinjuku-sanchome', 'tokyometro-kita-sando', 'tokyometro-meiji-jingumae', 'tokyu-ty01'],
-    stationCodes: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F11', 'F12', 'F13', 'F14', 'F15', 'F16'],
-    sourceUrl: 'https://www.tokyometro.jp/station/line_fukutoshin/index.html',
-  },
-]
-
-export const tokyoMetroOperator: RailwayOperator = {
-  id: 'tokyo-metro', name: 'とうきょうメトロ', displayName: '東京地下鉄', shortName: 'とうきょうメトロ',
-  color: '#149b95', routeIds: tokyoMetroRoutes.map((route) => route.id), sourceUrl: TOKYO_METRO_SOURCE,
-  unlockMilestoneId: TOKYO_METRO_UNLOCK_MILESTONE_ID,
-}
-
-export const tokyoMetroDataset: RailwayDataset = {
-  datasetId: 'jp.dataset.tokyo-metro', idScheme: 'legacy-v1', operator: tokyoMetroOperator,
   stations: tokyoMetroStations, routes: tokyoMetroRoutes, officialStationCount: TOKYO_METRO_OFFICIAL_STATION_COUNT,
-}
+})
+export const tokyoMetroOperator = tokyoMetroDataset.operator

@@ -17,11 +17,10 @@
 - `Station.id`は駅名や配列位置から作らず、公開後は変更しません。新規会社は`nationwideRailwayId`で全国版IDを生成します。
 - 読みはUnicode NFCのひらがなにします。
 - 同じ実在駅を複数路線で使う場合は同じ駅IDを共有します。
-- `Route.orderedStationIds`が隣接関係と電車演出の根拠です。
-- `Route.stationCodes`は`orderedStationIds`と同じ順・同じ件数にします。
+- 路線は`defineRoute`へ`{ stationId, code }`の組を渡します。通常の連番は`numberedStops`を使い、`orderedStationIds`と`stationCodes`はビルダーから生成します。
 - `segmentLabel`に収録区間を明示します。
 - 公式情報を確認し、[`docs/sources-and-licenses.md`](sources-and-licenses.md)へ出典を追加します。
-- 公開後の解除条件は「現在の全路線」から動的に作らず、`src/domain/unlocks.ts`へ固定ID・固定路線集合のマイルストーンとして追加します。
+- 公開後の解除条件は「現在の全路線」から動的に作らず、`src/config/unlockCampaigns.ts`へ固定ID・固定路線集合のキャンペーンとして追加します。判定処理は`src/domain/unlocks.ts`の汎用関数を使います。
 - 長い路線の途中実績は駅数ではなく、各駅の読みで練習済みになった文字位置の割合から算出します。現在は25・50・75・100%を区間スタンプとしています。
 - 選択式の解除は獲得スタンプ数から使える路線きっぷを算出し、選んだ路線の固定解除IDだけを保存します。新路線追加時に既存の解除数や必要数が変わらないよう、必要スタンプ数と対象路線IDを版付きで固定してください。
 
@@ -55,7 +54,7 @@ JSONには`schemaVersion`があります。既存フィールドの意味を変�
 
 ## サイトマップ
 
-検索エンジン向けの正規URLは`public/sitemap.xml`で管理します。`HashRouter`の`#/kana`や`#/station/...`はフラグメントであり、検索エンジン上の別URLにはならないため追記しません。将来、ハッシュを使わない固定の公開画面を追加した場合は、完全なHTTPS URLを`<url>`として追加し、該当する`<lastmod>`も更新してください。`public/robots.txt`のサイトマップURLも、公開ドメインやベースパスを変更した場合に合わせて更新します。
+検索エンジン向けの`sitemap.xml`、`sitemap-pages.xml`、`sitemap-routes.xml`と路線別パーマリンクは、`src/data/publicPages.ts`が路線カタログからビルド時に生成します。路線追加時にXMLを手編集する必要はありません。`HashRouter`の`#/kana`や`#/station/...`はフラグメントであり、検索エンジン上の別URLにはならないため登録しません。公開ドメインやベースパスを変更する場合は、ビルド時の`PUBLIC_SITE_URL`・`BASE_PATH`と`public/robots.txt`を合わせて確認します。
 
 ## 検索確認とアクセス解析
 

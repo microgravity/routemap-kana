@@ -1,5 +1,5 @@
-import type { RailwayOperator, Route, Station } from '../domain/types'
-import type { RailwayDataset } from './railwayCatalogTypes'
+import type { Station } from '../domain/types.ts'
+import { defineRailwayDataset, defineRoute, numberedStops } from './railwayCatalogTypes.ts'
 
 export const SOTETSU_SOURCE = 'https://www.sotetsu.co.jp/train/stations/'
 export const SOTETSU_ROUTE_COUNT = 3
@@ -37,41 +37,39 @@ export const sotetsuStations: Station[] = [
   station('sotetsu-so51', '羽沢横浜国大', 'はざわよこはまこくだい'),
 ]
 
-function codes(prefix: string, count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `${prefix}${String(index + 1).padStart(2, '0')}`)
-}
-
-export const sotetsuRoutes: Route[] = [
-  {
+export const sotetsuRoutes = [
+  defineRoute({
     id: 'sotetsu-main', operatorId: 'sotetsu', name: 'そうてつほんせん', color: '#315a7d',
     segmentLabel: 'よこはま 〜 えびな（18えき）',
-    orderedStationIds: [
+    stops: numberedStops([
       'tokyu-ty21', 'sotetsu-so02', 'sotetsu-so03', 'sotetsu-so04', 'sotetsu-so05', 'sotetsu-so06',
       'sotetsu-so07', 'sotetsu-so08', 'sotetsu-so09', 'sotetsu-so10', 'sotetsu-so11', 'sotetsu-so12',
       'sotetsu-so13', 'sotetsu-so14', 'sotetsu-so15', 'sotetsu-so16', 'sotetsu-so17', 'sotetsu-so18',
-    ],
-    stationCodes: codes('SO', 18), sourceUrl: SOTETSU_SOURCE,
-  },
-  {
+    ], 'SO'),
+    sourceUrl: SOTETSU_SOURCE,
+  }),
+  defineRoute({
     id: 'sotetsu-izumino', operatorId: 'sotetsu', name: 'そうてついずみのせん', color: '#2f8c83',
     segmentLabel: 'ふたまたがわ 〜 しょうなんだい（8えき）',
-    orderedStationIds: ['sotetsu-so10', 'sotetsu-so31', 'sotetsu-so32', 'sotetsu-so33', 'sotetsu-so34', 'sotetsu-so35', 'sotetsu-so36', 'sotetsu-so37'],
-    stationCodes: ['SO10', 'SO31', 'SO32', 'SO33', 'SO34', 'SO35', 'SO36', 'SO37'], sourceUrl: SOTETSU_SOURCE,
-  },
-  {
+    stops: [
+      { stationId: 'sotetsu-so10', code: 'SO10' }, { stationId: 'sotetsu-so31', code: 'SO31' },
+      { stationId: 'sotetsu-so32', code: 'SO32' }, { stationId: 'sotetsu-so33', code: 'SO33' },
+      { stationId: 'sotetsu-so34', code: 'SO34' }, { stationId: 'sotetsu-so35', code: 'SO35' },
+      { stationId: 'sotetsu-so36', code: 'SO36' }, { stationId: 'sotetsu-so37', code: 'SO37' },
+    ], sourceUrl: SOTETSU_SOURCE,
+  }),
+  defineRoute({
     id: 'sotetsu-shinyokohama', operatorId: 'sotetsu', name: 'そうてつしんよこはません', color: '#7663a8',
     segmentLabel: 'にしや 〜 しんよこはま（3えき）',
-    orderedStationIds: ['sotetsu-so08', 'sotetsu-so51', 'tokyu-sh01'],
-    stationCodes: ['SO08', 'SO51', 'SO52'], sourceUrl: SOTETSU_SOURCE,
-  },
+    stops: [{ stationId: 'sotetsu-so08', code: 'SO08' }, { stationId: 'sotetsu-so51', code: 'SO51' }, { stationId: 'tokyu-sh01', code: 'SO52' }],
+    sourceUrl: SOTETSU_SOURCE,
+  }),
 ]
 
-export const sotetsuOperator: RailwayOperator = {
-  id: 'sotetsu', name: 'そうてつ', displayName: '相模鉄道', shortName: 'そうてつ', color: '#315a7d',
-  routeIds: sotetsuRoutes.map((route) => route.id), sourceUrl: SOTETSU_SOURCE,
-}
-
-export const sotetsuDataset: RailwayDataset = {
-  datasetId: 'jp.dataset.sotetsu', idScheme: 'legacy-v1', operator: sotetsuOperator,
+export const sotetsuDataset = defineRailwayDataset({
+  datasetId: 'jp.dataset.sotetsu', idScheme: 'legacy-v1', operator: {
+    id: 'sotetsu', name: 'そうてつ', displayName: '相模鉄道', shortName: 'そうてつ', color: '#315a7d', sourceUrl: SOTETSU_SOURCE,
+  },
   stations: sotetsuStations, routes: sotetsuRoutes, officialStationCount: SOTETSU_OFFICIAL_STATION_COUNT,
-}
+})
+export const sotetsuOperator = sotetsuDataset.operator

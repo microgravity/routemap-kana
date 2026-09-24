@@ -1,5 +1,5 @@
 import type { RailwayDataset } from './railwayCatalogTypes'
-import { nationwideRailwayId, validateRailwayCatalog } from './railwayCatalogTypes'
+import { defineRailwayDataset, defineRoute, nationwideRailwayId, numberedStops, validateRailwayCatalog } from './railwayCatalogTypes'
 import { railwayCatalogErrors, railwayDatasets } from './stations'
 
 describe('全国版の鉄道データカタログ', () => {
@@ -26,7 +26,16 @@ describe('全国版の鉄道データカタログ', () => {
     const routeId = nationwideRailwayId.route('jr-west', 'kishin')
     const himejiId = nationwideRailwayId.station('28', 'himeji')
     const niimiId = nationwideRailwayId.station('33', 'niimi')
-    const dataset: RailwayDataset = {
+    const route = defineRoute({
+      id: routeId,
+      operatorId,
+      name: 'きしんせん',
+      color: '#b267aa',
+      segmentLabel: 'ひめじ 〜 にいみ',
+      stops: numberedStops([himejiId, niimiId], 'JRK'),
+      sourceUrl: 'https://www.jr-odekake.net/',
+    })
+    const dataset = defineRailwayDataset({
       datasetId: nationwideRailwayId.dataset('jr-west'),
       idScheme: 'jp-v2',
       officialStationCount: 2,
@@ -36,25 +45,18 @@ describe('全国版の鉄道データカタログ', () => {
         displayName: '西日本旅客鉄道',
         shortName: 'じぇいあーるにしにほん',
         color: '#2870b8',
-        routeIds: [routeId],
         sourceUrl: 'https://www.jr-odekake.net/',
       },
       stations: [
         { id: himejiId, displayName: '姫路', reading: 'ひめじ', builtIn: true },
         { id: niimiId, displayName: '新見', reading: 'にいみ', builtIn: true },
       ],
-      routes: [{
-        id: routeId,
-        operatorId,
-        name: 'きしんせん',
-        color: '#b267aa',
-        segmentLabel: 'ひめじ 〜 にいみ',
-        orderedStationIds: [himejiId, niimiId],
-        stationCodes: ['01', '02'],
-        sourceUrl: 'https://www.jr-odekake.net/',
-      }],
-    }
+      routes: [route],
+    })
 
+    expect(route.orderedStationIds).toEqual([himejiId, niimiId])
+    expect(route.stationCodes).toEqual(['JRK01', 'JRK02'])
+    expect(dataset.operator.routeIds).toEqual([routeId])
     expect(validateRailwayCatalog([dataset])).toEqual([])
   })
 
@@ -79,5 +81,28 @@ describe('全国版の鉄道データカタログ', () => {
     expect(() => nationwideRailwayId.station('兵庫', 'himeji')).toThrow()
     expect(() => nationwideRailwayId.route('JR-West', 'kishin')).toThrow()
     expect(() => nationwideRailwayId.station('28', '姫路')).toThrow()
+  })
+
+  it('路線内の重複と非NFCの読み、HTTP出典を検出する', () => {
+    const original = railwayDatasets[0]
+    const firstStation = original.stations[0]
+    const invalid: RailwayDataset = {
+      ...original,
+      operator: { ...original.operator, sourceUrl: 'http://example.com/' },
+      stations: [{ ...firstStation, reading: 'か\u3099' }],
+      routes: [{
+        ...original.routes[0],
+        orderedStationIds: [firstStation.id, firstStation.id],
+        stationCodes: ['X01', 'X01'],
+        sourceUrl: 'http://example.com/route',
+      }],
+    }
+    invalid.operator.routeIds = [invalid.routes[0].id]
+    const errors = validateRailwayCatalog([invalid])
+
+    expect(errors.some((error) => error.includes('出典URLはHTTPS'))).toBe(true)
+    expect(errors.some((error) => error.includes('Unicode NFC'))).toBe(true)
+    expect(errors.some((error) => error.includes('駅IDが重複'))).toBe(true)
+    expect(errors.some((error) => error.includes('駅番号が重複'))).toBe(true)
   })
 })

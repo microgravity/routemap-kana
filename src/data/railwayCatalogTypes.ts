@@ -1,4 +1,4 @@
-import type { RailwayOperator, Route, Station } from '../domain/types'
+import type { RailwayOperator, Route, Station } from '../domain/types.ts'
 
 export type RailwayIdScheme = 'legacy-v1' | 'jp-v2'
 
@@ -9,6 +9,45 @@ export interface RailwayDataset {
   stations: readonly Station[]
   routes: readonly Route[]
   officialStationCount: number
+}
+
+export interface RouteStop {
+  stationId: string
+  code: string
+}
+
+export type RouteDefinition = Omit<Route, 'orderedStationIds' | 'stationCodes'> & {
+  stops: readonly RouteStop[]
+}
+
+export function numberedStops(stationIds: readonly string[], prefix: string, start = 1): RouteStop[] {
+  return stationIds.map((stationId, index) => ({
+    stationId,
+    code: `${prefix}${String(start + index).padStart(2, '0')}`,
+  }))
+}
+
+export function defineRoute(definition: RouteDefinition): Route {
+  const { stops, ...route } = definition
+  return {
+    ...route,
+    orderedStationIds: stops.map((stop) => stop.stationId),
+    stationCodes: stops.map((stop) => stop.code),
+  }
+}
+
+export type RailwayDatasetDefinition = Omit<RailwayDataset, 'operator'> & {
+  operator: Omit<RailwayOperator, 'routeIds'>
+}
+
+export function defineRailwayDataset(definition: RailwayDatasetDefinition): RailwayDataset {
+  return {
+    ...definition,
+    operator: {
+      ...definition.operator,
+      routeIds: definition.routes.map((route) => route.id),
+    },
+  }
 }
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
@@ -48,6 +87,15 @@ function duplicates(values: readonly string[]): string[] {
   return [...duplicateIds]
 }
 
+function isHttpsUrl(value: string | undefined): boolean {
+  if (!value) return false
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function validateRailwayCatalog(datasets: readonly RailwayDataset[]): string[] {
   const errors: string[] = []
   const datasetIds = datasets.map((dataset) => dataset.datasetId)
@@ -65,6 +113,8 @@ export function validateRailwayCatalog(datasets: readonly RailwayDataset[]): str
   const knownStationIds = new Set(stationIds)
   for (const dataset of datasets) {
     const { operator } = dataset
+    if (!Number.isInteger(dataset.officialStationCount) || dataset.officialStationCount < 1) errors.push(`${dataset.datasetId}の公式駅数が不正です`)
+    if (!isHttpsUrl(operator.sourceUrl)) errors.push(`${operator.id}の出典URLはHTTPSで指定してください`)
     const ownedRouteIds = dataset.routes.map((route) => route.id)
     if (new Set(operator.routeIds).size !== operator.routeIds.length) errors.push(`${operator.id}のrouteIdsが重複しています`)
     if (operator.routeIds.length !== ownedRouteIds.length || operator.routeIds.some((id) => !ownedRouteIds.includes(id))) {
@@ -89,9 +139,20 @@ export function validateRailwayCatalog(datasets: readonly RailwayDataset[]): str
       }
     }
 
+    for (const station of dataset.stations) {
+      if (!station.id.trim() || !station.displayName.trim() || !station.reading.trim()) errors.push(`${station.id || '(空)'}の駅情報に空欄があります`)
+      if (station.reading !== station.reading.normalize('NFC')) errors.push(`${station.id}の読みがUnicode NFCではありません`)
+      if (station.sourceUrl && !isHttpsUrl(station.sourceUrl)) errors.push(`${station.id}の出典URLはHTTPSで指定してください`)
+    }
+
     for (const route of dataset.routes) {
       if (route.operatorId !== operator.id) errors.push(`${route.id}のoperatorIdが${operator.id}と一致しません`)
+      if (route.orderedStationIds.length === 0) errors.push(`${route.id}に駅がありません`)
       if (route.orderedStationIds.length !== route.stationCodes.length) errors.push(`${route.id}の駅IDと駅番号の件数が一致しません`)
+      if (duplicates(route.orderedStationIds).length > 0) errors.push(`${route.id}の駅IDが重複しています`)
+      if (duplicates(route.stationCodes).length > 0) errors.push(`${route.id}の駅番号が重複しています`)
+      if (route.stationCodes.some((code) => !code.trim())) errors.push(`${route.id}に空の駅番号があります`)
+      if (!isHttpsUrl(route.sourceUrl)) errors.push(`${route.id}の出典URLはHTTPSで指定してください`)
       for (const stationId of route.orderedStationIds) {
         if (!knownStationIds.has(stationId)) errors.push(`${route.id}が未登録station IDを参照しています: ${stationId}`)
       }

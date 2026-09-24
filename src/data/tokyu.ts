@@ -1,5 +1,5 @@
-import type { RailwayOperator, Route, Station } from '../domain/types'
-import type { RailwayDataset } from './railwayCatalogTypes'
+import type { Station } from '../domain/types.ts'
+import { defineRailwayDataset, defineRoute, numberedStops } from './railwayCatalogTypes.ts'
 
 export const TOKYU_SOURCE = 'https://www.tokyu.co.jp/railway/station/'
 export const TOKYU_ROUTE_COUNT = 9
@@ -111,13 +111,8 @@ export const tokyuStations: Station[] = [
   station('tokyu-kd03', 'こどもの国', 'こどものくに'),
 ]
 
-function codes(prefix: string, count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `${prefix}${String(index + 1).padStart(2, '0')}`)
-}
-
 const toyokoIds = Array.from({ length: 21 }, (_, index) => `tokyu-ty${String(index + 1).padStart(2, '0')}`)
 const meguroIds = ['tokyu-mg01', 'tokyu-mg02', 'tokyu-mg03', 'tokyu-mg04', 'tokyu-mg05', 'tokyu-mg06', 'tokyu-mg07', 'tokyu-ty08', 'tokyu-ty09', 'tokyu-ty10', 'tokyu-ty11', 'tokyu-ty12', 'tokyu-ty13']
-const shinyokohamaIds = ['tokyu-ty13', 'tokyu-sh02', 'tokyu-sh01']
 const denentoshiIds = ['tokyu-ty01', ...Array.from({ length: 26 }, (_, index) => `tokyu-dt${String(index + 2).padStart(2, '0')}`)]
 const oimachiIds = ['tokyu-om01', 'tokyu-om02', 'tokyu-om03', 'tokyu-om04', 'tokyu-om05', 'tokyu-ik05', 'tokyu-om07', 'tokyu-mg06', 'tokyu-om09', 'tokyu-ty07', 'tokyu-om11', 'tokyu-om12', 'tokyu-om13', 'tokyu-om14', 'tokyu-dt07', 'tokyu-dt10']
 const ikegamiIds = Array.from({ length: 15 }, (_, index) => `tokyu-ik${String(index + 1).padStart(2, '0')}`)
@@ -125,24 +120,22 @@ const tamagawaIds = ['tokyu-ty09', 'tokyu-tm02', 'tokyu-tm03', 'tokyu-tm04', 'to
 const setagayaIds = ['tokyu-dt03', ...Array.from({ length: 9 }, (_, index) => `tokyu-sg${String(index + 2).padStart(2, '0')}`)]
 const kodomonokuniIds = ['tokyu-dt22', 'tokyu-kd02', 'tokyu-kd03']
 
-export const tokyuRoutes: Route[] = [
-  { id: 'toyoko', operatorId: 'tokyu', name: 'とうよこせん', color: '#db5570', segmentLabel: 'しぶや 〜 よこはま（21えき）', orderedStationIds: toyokoIds, stationCodes: codes('TY', 21), sourceUrl: 'https://www.tokyu.co.jp/railway/ty/' },
-  { id: 'meguro', operatorId: 'tokyu', name: 'めぐろせん', color: '#319c95', segmentLabel: 'めぐろ 〜 ひよし（13えき）', orderedStationIds: meguroIds, stationCodes: codes('MG', 13), sourceUrl: 'https://www.tokyu.co.jp/railway/mg/' },
-  { id: 'shinyokohama', operatorId: 'tokyu', name: 'とうきゅうしんよこはません', color: '#7d69a8', segmentLabel: 'ひよし 〜 しんよこはま（3えき）', orderedStationIds: shinyokohamaIds, stationCodes: ['SH03', 'SH02', 'SH01'], sourceUrl: 'https://www.tokyu.co.jp/railway/sh/' },
-  { id: 'denentoshi', operatorId: 'tokyu', name: 'でんえんとしせん', color: '#4d9f63', segmentLabel: 'しぶや 〜 ちゅうおうりんかん（27えき）', orderedStationIds: denentoshiIds, stationCodes: codes('DT', 27), sourceUrl: 'https://www.tokyu.co.jp/railway/dt/' },
-  { id: 'oimachi', operatorId: 'tokyu', name: 'おおいまちせん', color: '#e58b42', segmentLabel: 'おおいまち 〜 みぞのくち（16えき）', orderedStationIds: oimachiIds, stationCodes: codes('OM', 16), sourceUrl: 'https://www.tokyu.co.jp/railway/om/', note: 'ふたこしんち・たかつには、おおいまちせんの いちぶの かくえきていしゃが とまります。' },
-  { id: 'ikegami', operatorId: 'tokyu', name: 'いけがみせん', color: '#c94d91', segmentLabel: 'ごたんだ 〜 かまた（15えき）', orderedStationIds: ikegamiIds, stationCodes: codes('IK', 15), sourceUrl: 'https://www.tokyu.co.jp/railway/ik/' },
-  { id: 'tamagawa', operatorId: 'tokyu', name: 'とうきゅうたまがわせん', color: '#ae4a78', segmentLabel: 'たまがわ 〜 かまた（7えき）', orderedStationIds: tamagawaIds, stationCodes: codes('TM', 7), sourceUrl: 'https://www.tokyu.co.jp/railway/tm/' },
-  { id: 'setagaya', operatorId: 'tokyu', name: 'せたがやせん', color: '#d49b18', segmentLabel: 'さんげんぢゃや 〜 しもたかいど（10えき）', orderedStationIds: setagayaIds, stationCodes: codes('SG', 10), sourceUrl: 'https://www.tokyu.co.jp/railway/sg/' },
-  { id: 'kodomonokuni', operatorId: 'tokyu', name: 'こどものくにせん', color: '#3788bd', segmentLabel: 'ながつた 〜 こどものくに（3えき）', orderedStationIds: kodomonokuniIds, stationCodes: codes('KD', 3), sourceUrl: 'https://www.tokyu.co.jp/railway/kd/' },
+export const tokyuRoutes = [
+  defineRoute({ id: 'toyoko', operatorId: 'tokyu', name: 'とうよこせん', color: '#db5570', segmentLabel: 'しぶや 〜 よこはま（21えき）', stops: numberedStops(toyokoIds, 'TY'), sourceUrl: 'https://www.tokyu.co.jp/railway/ty/' }),
+  defineRoute({ id: 'meguro', operatorId: 'tokyu', name: 'めぐろせん', color: '#319c95', segmentLabel: 'めぐろ 〜 ひよし（13えき）', stops: numberedStops(meguroIds, 'MG'), sourceUrl: 'https://www.tokyu.co.jp/railway/mg/' }),
+  defineRoute({ id: 'shinyokohama', operatorId: 'tokyu', name: 'とうきゅうしんよこはません', color: '#7d69a8', segmentLabel: 'ひよし 〜 しんよこはま（3えき）', stops: [{ stationId: 'tokyu-ty13', code: 'SH03' }, { stationId: 'tokyu-sh02', code: 'SH02' }, { stationId: 'tokyu-sh01', code: 'SH01' }], sourceUrl: 'https://www.tokyu.co.jp/railway/sh/' }),
+  defineRoute({ id: 'denentoshi', operatorId: 'tokyu', name: 'でんえんとしせん', color: '#4d9f63', segmentLabel: 'しぶや 〜 ちゅうおうりんかん（27えき）', stops: numberedStops(denentoshiIds, 'DT'), sourceUrl: 'https://www.tokyu.co.jp/railway/dt/' }),
+  defineRoute({ id: 'oimachi', operatorId: 'tokyu', name: 'おおいまちせん', color: '#e58b42', segmentLabel: 'おおいまち 〜 みぞのくち（16えき）', stops: numberedStops(oimachiIds, 'OM'), sourceUrl: 'https://www.tokyu.co.jp/railway/om/', note: 'ふたこしんち・たかつには、おおいまちせんの いちぶの かくえきていしゃが とまります。' }),
+  defineRoute({ id: 'ikegami', operatorId: 'tokyu', name: 'いけがみせん', color: '#c94d91', segmentLabel: 'ごたんだ 〜 かまた（15えき）', stops: numberedStops(ikegamiIds, 'IK'), sourceUrl: 'https://www.tokyu.co.jp/railway/ik/' }),
+  defineRoute({ id: 'tamagawa', operatorId: 'tokyu', name: 'とうきゅうたまがわせん', color: '#ae4a78', segmentLabel: 'たまがわ 〜 かまた（7えき）', stops: numberedStops(tamagawaIds, 'TM'), sourceUrl: 'https://www.tokyu.co.jp/railway/tm/' }),
+  defineRoute({ id: 'setagaya', operatorId: 'tokyu', name: 'せたがやせん', color: '#d49b18', segmentLabel: 'さんげんぢゃや 〜 しもたかいど（10えき）', stops: numberedStops(setagayaIds, 'SG'), sourceUrl: 'https://www.tokyu.co.jp/railway/sg/' }),
+  defineRoute({ id: 'kodomonokuni', operatorId: 'tokyu', name: 'こどものくにせん', color: '#3788bd', segmentLabel: 'ながつた 〜 こどものくに（3えき）', stops: numberedStops(kodomonokuniIds, 'KD'), sourceUrl: 'https://www.tokyu.co.jp/railway/kd/' }),
 ]
 
-export const tokyuOperator: RailwayOperator = {
-  id: 'tokyu', name: 'とうきゅうでんてつ', displayName: '東急電鉄', shortName: 'とうきゅう', color: '#b6553f',
-  routeIds: tokyuRoutes.map((route) => route.id), sourceUrl: TOKYU_SOURCE,
-}
-
-export const tokyuDataset: RailwayDataset = {
-  datasetId: 'jp.dataset.tokyu', idScheme: 'legacy-v1', operator: tokyuOperator,
+export const tokyuDataset = defineRailwayDataset({
+  datasetId: 'jp.dataset.tokyu', idScheme: 'legacy-v1', operator: {
+    id: 'tokyu', name: 'とうきゅうでんてつ', displayName: '東急電鉄', shortName: 'とうきゅう', color: '#b6553f', sourceUrl: TOKYU_SOURCE,
+  },
   stations: tokyuStations, routes: tokyuRoutes, officialStationCount: TOKYU_OFFICIAL_STATION_COUNT,
-}
+})
+export const tokyuOperator = tokyuDataset.operator

@@ -8,11 +8,11 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --configLoader bundle",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "build": "npm run typecheck && npm run test && vite build",
-    "preview": "vite preview"
+    "test": "vitest run --configLoader bundle",
+    "build": "npm run typecheck && npm run test && vite build --configLoader bundle",
+    "preview": "vite preview --configLoader bundle"
   },
   "dependencies": {
     "@material-symbols/font-400": "0.47.1",

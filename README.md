@@ -36,6 +36,7 @@
 - 全訪問で読み込むGoogle Tag Manager経由のアクセス解析
 - カスタム駅の追加・編集と既存路線への手動挿入
 - 全国追加に備えた会社別データセットと、重複・参照漏れを検出する固有IDカタログ
+- 駅IDと駅番号を一組で定義する路線ビルダーと、宣言的に追加できる汎用解除キャンペーン
 - 検証つきJSONバックアップ・置換復元
 - ホーム画面からアプリ表示で起動できるPWA・オフライン再起動
 
@@ -105,6 +106,7 @@ Safariで公開URLを開き、共有ボタンから「ホーム画面に追加�
 ## データと資料
 
 - [データ追加ガイド](docs/data-guide.md)
+- [全国向け鉄道データ設計](docs/railway-data-architecture.md)
 - [駅・画順データの出典とライセンス](docs/sources-and-licenses.md)
 - [iPad実機チェックリスト](docs/ipad-checklist.md)
 - [元の実装仕様](codex-station-hiragana-brief.md)
