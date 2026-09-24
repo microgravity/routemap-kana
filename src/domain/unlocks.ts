@@ -20,6 +20,7 @@ export type UnlockCondition =
   | { kind: 'route-effort'; routeId: string; ratio: RouteCheckpointRatio }
   | { kind: 'all'; conditions: UnlockCondition[] }
   | { kind: 'any'; conditions: UnlockCondition[] }
+  | { kind: 'at-least'; required: number; conditions: UnlockCondition[] }
 
 export interface UnlockMilestone { id: string; title: string; description: string; condition: UnlockCondition }
 export interface UnlockContext { routes: readonly Route[]; stationById: ReadonlyMap<string, Station>; progress: Record<string, PracticeProgress> }
@@ -65,10 +66,16 @@ const campaignUnlockMilestones: UnlockMilestone[] = routeChoiceCampaigns.map((ca
   id: campaign.unlockMilestoneId,
   title: campaign.title,
   description: campaign.description,
-  condition: {
-    kind: 'all',
-    conditions: campaign.prerequisiteRouteIds.map((routeId) => ({ kind: 'route-achievement', routeId, level: 'complete' })),
-  },
+  condition: campaign.prerequisiteRequiredCount === undefined
+    ? {
+        kind: 'all',
+        conditions: campaign.prerequisiteRouteIds.map((routeId) => ({ kind: 'route-achievement', routeId, level: 'complete' })),
+      }
+    : {
+        kind: 'at-least',
+        required: campaign.prerequisiteRequiredCount,
+        conditions: campaign.prerequisiteRouteIds.map((routeId) => ({ kind: 'route-achievement', routeId, level: 'complete' })),
+      },
 }))
 
 export const unlockMilestones: UnlockMilestone[] = [...campaignUnlockMilestones, ...routeCheckpointMilestones]
@@ -79,6 +86,9 @@ const achievementRank: Record<RouteAchievementLevel, number> = { none: 0, comple
 export function isUnlockConditionMet(condition: UnlockCondition, context: UnlockContext): boolean {
   if (condition.kind === 'all') return condition.conditions.every((item) => isUnlockConditionMet(item, context))
   if (condition.kind === 'any') return condition.conditions.some((item) => isUnlockConditionMet(item, context))
+  if (condition.kind === 'at-least') {
+    return condition.conditions.filter((item) => isUnlockConditionMet(item, context)).length >= condition.required
+  }
   const route = context.routes.find((item) => item.id === condition.routeId)
   if (!route) return false
   if (condition.kind === 'route-effort') return routeEffortProgress(route.orderedStationIds, context.stationById, context.progress).ratio >= condition.ratio
@@ -86,9 +96,12 @@ export function isUnlockConditionMet(condition: UnlockCondition, context: Unlock
 }
 
 export function unlockProgress(milestone: UnlockMilestone, context: UnlockContext): UnlockProgress {
-  const conditions = milestone.condition.kind === 'all' ? milestone.condition.conditions : [milestone.condition]
+  const conditions = milestone.condition.kind === 'all' || milestone.condition.kind === 'at-least'
+    ? milestone.condition.conditions
+    : [milestone.condition]
   const completed = conditions.filter((condition) => isUnlockConditionMet(condition, context)).length
-  return { completed, total: conditions.length, earned: isUnlockConditionMet(milestone.condition, context) }
+  const total = milestone.condition.kind === 'at-least' ? milestone.condition.required : conditions.length
+  return { completed: Math.min(completed, total), total, earned: isUnlockConditionMet(milestone.condition, context) }
 }
 
 export function grantEarnedMilestones(currentIds: readonly string[], context: UnlockContext): string[] {

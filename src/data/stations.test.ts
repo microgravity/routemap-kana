@@ -8,6 +8,8 @@ import {
   TOKYU_ROUTE_COUNT,
   TOKYO_METRO_OFFICIAL_STATION_COUNT,
   TOKYO_METRO_ROUTE_COUNT,
+  TOEI_SUBWAY_OFFICIAL_STATION_COUNT,
+  TOEI_SUBWAY_ROUTE_COUNT,
   builtInStationById,
   builtInStations,
   railwayOperators,
@@ -16,6 +18,7 @@ import {
 import { isHiraganaReading } from '../domain/kana'
 import { metroRouteUnlockMilestoneId, TOKYO_METRO_CHOICE_ROUTE_IDS, TOKYO_METRO_STARTER_ROUTE_IDS } from '../domain/unlocks'
 import { tokyoMetroStations } from './tokyoMetro'
+import { toeiStations } from './operators/toei/index'
 
 const expectedRoutes = [
   ['toyoko', 'tokyu', 21, '渋谷', '横浜', 'TY01', 'TY21'],
@@ -44,28 +47,61 @@ const expectedMetroRoutes = [
   ['metro-fukutoshin', 16, '和光市', '渋谷', 'F01', 'F16'],
 ] as const
 
+const expectedToeiRoutes = [
+  ['jp.route.toei.asakusa', 20, '西馬込', '押上〈スカイツリー前〉', 'A01', 'A20'],
+  ['jp.route.toei.mita', 27, '目黒', '西高島平', 'I01', 'I27'],
+  ['jp.route.toei.shinjuku', 21, '新宿', '本八幡', 'S01', 'S21'],
+  ['jp.route.toei.oedo', 38, '新宿西口', '光が丘', 'E01', 'E38'],
+] as const
+
 describe('鉄道会社・路線・駅データ', () => {
-  it('東急9路線・相鉄3路線・東京メトロ9路線を会社別に収録する', () => {
+  it('東急・相鉄・東京メトロ・都営地下鉄の25路線を会社別に収録する', () => {
     expect(TOKYU_ROUTE_COUNT).toBe(9)
     expect(SOTETSU_ROUTE_COUNT).toBe(3)
     expect(TOKYU_OFFICIAL_STATION_COUNT).toBe(99)
     expect(SOTETSU_OFFICIAL_STATION_COUNT).toBe(27)
     expect(TOKYO_METRO_ROUTE_COUNT).toBe(9)
     expect(TOKYO_METRO_OFFICIAL_STATION_COUNT).toBe(180)
-    expect(OFFICIAL_ROUTE_COUNT).toBe(21)
-    expect(OFFICIAL_STATION_COUNT).toBe(306)
+    expect(TOEI_SUBWAY_ROUTE_COUNT).toBe(4)
+    expect(TOEI_SUBWAY_OFFICIAL_STATION_COUNT).toBe(106)
+    expect(OFFICIAL_ROUTE_COUNT).toBe(25)
+    expect(OFFICIAL_STATION_COUNT).toBe(412)
     expect(routes).toHaveLength(OFFICIAL_ROUTE_COUNT)
     expect(railwayOperators.map((operator) => [operator.id, operator.routeIds.length])).toEqual([
       ['tokyu', 9],
       ['sotetsu', 3],
       ['tokyo-metro', 9],
+      ['jp.operator.toei', 4],
     ])
   })
 
-  it('会社間・路線間の共有駅を統合した264 Station IDで収録する', () => {
+  it('会社間・路線間の共有駅を統合した334 Station IDで収録する', () => {
     expect(builtInStations).toHaveLength(NORMALIZED_STATION_COUNT)
+    expect(NORMALIZED_STATION_COUNT).toBe(334)
     expect(new Set(builtInStations.map((station) => station.id)).size).toBe(NORMALIZED_STATION_COUNT)
-    expect(routes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(329)
+    expect(routes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(435)
+  })
+
+  it.each(expectedToeiRoutes)('%sの全駅・起終点・駅番号を公式順で保持する', (routeId, count, first, last, firstCode, lastCode) => {
+    const route = routes.find((item) => item.id === routeId)!
+    expect(route.operatorId).toBe('jp.operator.toei')
+    expect(route.orderedStationIds).toHaveLength(count)
+    expect(route.stationCodes).toHaveLength(count)
+    expect(route.stationCodes[0]).toBe(firstCode)
+    expect(route.stationCodes.at(-1)).toBe(lastCode)
+    expect(builtInStationById.get(route.orderedStationIds[0])?.displayName).toBe(first)
+    expect(builtInStationById.get(route.orderedStationIds.at(-1)!)?.displayName).toBe(last)
+    expect(route.orderedStationIds.every((id) => builtInStationById.has(id))).toBe(true)
+  })
+
+  it('都営地下鉄の106路線別駅所属を99駅へ統合し、新規70駅を全国版IDで保持する', () => {
+    const toeiRoutes = routes.filter((route) => route.operatorId === 'jp.operator.toei')
+    const toeiStationIds = new Set(toeiRoutes.flatMap((route) => route.orderedStationIds))
+    expect(toeiRoutes.reduce((count, route) => count + route.orderedStationIds.length, 0)).toBe(106)
+    expect(toeiStationIds.size).toBe(99)
+    expect(toeiStations).toHaveLength(70)
+    expect(toeiStations.every((station) => /^jp\.station\./u.test(station.id))).toBe(true)
+    expect([...toeiStationIds].every((id) => isHiraganaReading(builtInStationById.get(id)?.reading ?? ''))).toBe(true)
   })
 
   it.each(expectedMetroRoutes)('%sの全駅・起終点・駅番号を公式順で保持する', (routeId, count, first, last, firstCode, lastCode) => {
@@ -156,6 +192,11 @@ describe('鉄道会社・路線・駅データ', () => {
     expect(ids.toyoko.has('tokyu-ty03') && ids['metro-hibiya'].has('tokyu-ty03')).toBe(true)
     expect(ids.meguro.has('tokyu-mg01') && ids['metro-namboku'].has('tokyu-mg01')).toBe(true)
     expect(ids['metro-ginza'].has('tokyometro-ginza') && ids['metro-marunouchi'].has('tokyometro-ginza') && ids['metro-hibiya'].has('tokyometro-ginza')).toBe(true)
+    expect(ids['jp.route.toei.asakusa'].has('tokyu-ik01')).toBe(true)
+    expect(ids['jp.route.toei.mita'].has('tokyu-mg01') && ids['metro-namboku'].has('tokyu-mg01')).toBe(true)
+    expect(ids['jp.route.toei.shinjuku'].has('tokyometro-jimbocho') && ids['jp.route.toei.mita'].has('tokyometro-jimbocho')).toBe(true)
+    expect(ids['jp.route.toei.oedo'].has('jp.station.13.kasuga') && ids['jp.route.toei.mita'].has('jp.station.13.kasuga')).toBe(true)
+    expect(ids['jp.route.toei.oedo'].has('tokyometro-shinjuku') && ids['jp.route.toei.shinjuku'].has('tokyometro-shinjuku')).toBe(true)
   })
 
   it('既存駅IDを変更しない', () => {

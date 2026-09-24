@@ -1,7 +1,7 @@
 import { builtInStationById, railwayOperators, routes } from '../data/stations'
 import { completePosition, freshProgress } from './progress'
 import type { PracticeProgress } from './types'
-import { routeChoiceCampaignByOperatorId } from '../config/unlockCampaigns'
+import { routeChoiceCampaignByOperatorId, TOEI_SUBWAY_CHOICE_ROUTE_IDS, TOEI_SUBWAY_STARTER_ROUTE_IDS, TOEI_SUBWAY_UNLOCK_MILESTONE_ID } from '../config/unlockCampaigns'
 import {
   TOKYO_METRO_CHOICE_ROUTE_IDS,
   TOKYO_METRO_UNLOCK_MILESTONE_ID,
@@ -33,6 +33,12 @@ function completedPrerequisiteProgress() {
     'sotetsu-main', 'sotetsu-izumino', 'sotetsu-shinyokohama',
   ])
   const stationIds = new Set(routes.filter((route) => routeIds.has(route.id)).flatMap((route) => route.orderedStationIds))
+  return Object.fromEntries([...stationIds].map((stationId) => [stationId, completedProgressFor(stationId)]))
+}
+
+function completedRoutesProgress(routeIds: readonly string[]) {
+  const selected = new Set(routeIds)
+  const stationIds = new Set(routes.filter((route) => selected.has(route.id)).flatMap((route) => route.orderedStationIds))
   return Object.fromEntries([...stationIds].map((stationId) => [stationId, completedProgressFor(stationId)]))
 }
 
@@ -122,5 +128,37 @@ describe('コンテンツ解除', () => {
     const legacy = migrateUnlockMilestones([TOKYO_METRO_UNLOCK_MILESTONE_ID], 1)
     expect(TOKYO_METRO_CHOICE_ROUTE_IDS.every((routeId) => legacy.includes(metroRouteUnlockMilestoneId(routeId)))).toBe(true)
     expect(migrateUnlockMilestones([TOKYO_METRO_UNLOCK_MILESTONE_ID], UNLOCK_SYSTEM_VERSION)).toEqual([TOKYO_METRO_UNLOCK_MILESTONE_ID])
+  })
+
+  it('東京メトロの好きな3路線クリアで都営地下鉄を解除する', () => {
+    const toeiMilestone = unlockMilestoneById.get(TOEI_SUBWAY_UNLOCK_MILESTONE_ID)!
+    const toei = railwayOperators.find((operator) => operator.id === 'jp.operator.toei')!
+    const twoRoutes = completedRoutesProgress(['metro-ginza', 'metro-hanzomon'])
+    const threeRoutes = completedRoutesProgress(['metro-ginza', 'metro-hanzomon', 'metro-fukutoshin'])
+
+    expect(unlockProgress(toeiMilestone, { routes, stationById: builtInStationById, progress: twoRoutes }))
+      .toEqual({ completed: 2, total: 3, earned: false })
+    const earned = grantEarnedMilestones([], { routes, stationById: builtInStationById, progress: threeRoutes })
+    expect(earned).toContain(TOEI_SUBWAY_UNLOCK_MILESTONE_ID)
+    expect(isOperatorUnlocked(toei, earned)).toBe(true)
+  })
+
+  it('都営地下鉄は浅草線から始まり、スタンプ1・3・5個で残り3路線を選べる', () => {
+    const campaign = routeChoiceCampaignByOperatorId.get('jp.operator.toei')!
+    const operatorUnlocked = [TOEI_SUBWAY_UNLOCK_MILESTONE_ID]
+    const starter = routes.find((route) => route.id === TOEI_SUBWAY_STARTER_ROUTE_IDS[0])!
+    const choice = routes.find((route) => route.id === TOEI_SUBWAY_CHOICE_ROUTE_IDS[0])!
+
+    expect(isRouteUnlocked(starter, railwayOperators, operatorUnlocked)).toBe(true)
+    expect(isRouteUnlocked(choice, railwayOperators, operatorUnlocked)).toBe(false)
+    const earned = grantEarnedMilestones(operatorUnlocked, {
+      routes,
+      stationById: builtInStationById,
+      progress: progressForRouteRatio(starter.id, 0.25),
+    })
+    expect(routeChoiceStatus(campaign, earned)).toMatchObject({ earnedStamps: 1, availableChoices: 1, nextStampTarget: 1 })
+    const selected = grantRouteChoice(earned, campaign, choice.id)
+    expect(isRouteUnlocked(choice, railwayOperators, selected)).toBe(true)
+    expect(routeChoiceStatus(campaign, selected)).toMatchObject({ earnedStamps: 1, unlockedChoices: 1, availableChoices: 0, nextStampTarget: 3 })
   })
 })

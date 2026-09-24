@@ -3,6 +3,7 @@ import { assertValidRailwayCatalog, validateRailwayCatalog, type RailwayDataset 
 import { sotetsuDataset, SOTETSU_OFFICIAL_STATION_COUNT, SOTETSU_ROUTE_COUNT } from './sotetsu.ts'
 import { tokyoMetroDataset, TOKYO_METRO_OFFICIAL_STATION_COUNT, TOKYO_METRO_ROUTE_COUNT } from './tokyoMetro.ts'
 import { tokyuDataset, TOKYU_OFFICIAL_STATION_COUNT, TOKYU_ROUTE_COUNT } from './tokyu.ts'
+import { toeiDataset, TOEI_SUBWAY_OFFICIAL_STATION_COUNT, TOEI_SUBWAY_ROUTE_COUNT } from './operators/toei/index.ts'
 
 export {
   SOTETSU_OFFICIAL_STATION_COUNT,
@@ -11,6 +12,8 @@ export {
   TOKYO_METRO_ROUTE_COUNT,
   TOKYU_OFFICIAL_STATION_COUNT,
   TOKYU_ROUTE_COUNT,
+  TOEI_SUBWAY_OFFICIAL_STATION_COUNT,
+  TOEI_SUBWAY_ROUTE_COUNT,
 }
 
 /**
@@ -21,6 +24,7 @@ export const railwayDatasets: readonly RailwayDataset[] = [
   tokyuDataset,
   sotetsuDataset,
   tokyoMetroDataset,
+  toeiDataset,
 ]
 
 assertValidRailwayCatalog(railwayDatasets)

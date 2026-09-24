@@ -3,13 +3,15 @@ import { defineRailwayDataset, defineRoute, nationwideRailwayId, numberedStops, 
 import { railwayCatalogErrors, railwayDatasets } from './stations'
 
 describe('全国版の鉄道データカタログ', () => {
-  it('既存3社を会社別データセットとして矛盾なく統合する', () => {
+  it('4社を会社別データセットとして矛盾なく統合する', () => {
     expect(railwayDatasets.map((dataset) => dataset.datasetId)).toEqual([
       'jp.dataset.tokyu',
       'jp.dataset.sotetsu',
       'jp.dataset.tokyo-metro',
+      'jp.dataset.toei',
     ])
-    expect(railwayDatasets.every((dataset) => dataset.idScheme === 'legacy-v1')).toBe(true)
+    expect(railwayDatasets.slice(0, 3).every((dataset) => dataset.idScheme === 'legacy-v1')).toBe(true)
+    expect(railwayDatasets[3].idScheme).toBe('jp-v2')
     expect(railwayCatalogErrors).toEqual([])
   })
 
