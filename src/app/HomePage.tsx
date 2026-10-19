@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { completedStationCount, routeAchievementLevel, routeEffortProgress, type RouteAchievement } from '../domain/progress'
+import { katakanaUnlockCount, KATAKANA_UNLOCK_MILESTONE_ID, KATAKANA_UNLOCK_STATIONS } from '../domain/learningModes'
+import { readingForMode } from '../domain/kana'
 import { isOperatorUnlocked, isRouteUnlocked, ROUTE_CHECKPOINT_RATIOS, routeCheckpointMilestoneById, unlockMilestoneById, unlockProgress as calculateUnlockProgress } from '../domain/unlocks'
 import { RailwayPicker } from '../features/route-picker/RailwayPicker'
 import { RouteMap } from '../features/route-map/RouteMap'
@@ -22,7 +24,11 @@ export function HomePage() {
   const location = useLocation()
   const celebration = (location.state ?? {}) as CelebrationState
   const [params, setParams] = useSearchParams()
-  const { state, stationById, routeStationIds, storageWarning, unlockRoute } = useAppState()
+  const { state, stationById, stations, routeStationIds, storageWarning, unlockRoute, learningMode, progress, setLearningMode } = useAppState()
+  const katakanaCompleted = katakanaUnlockCount(stations, state.progressByMode.hiragana)
+  const katakanaUnlocked = state.unlockedMilestones.includes(KATAKANA_UNLOCK_MILESTONE_ID) || katakanaCompleted >= KATAKANA_UNLOCK_STATIONS
+  const requestedLearningMode = params.get('learning') === 'katakana' ? 'katakana' : params.get('learning') === 'hiragana' ? 'hiragana' : learningMode
+  useEffect(() => { setLearningMode(requestedLearningMode) }, [requestedLearningMode, setLearningMode])
   const [mode, setMode] = useState<'all' | 'mine'>('all')
   const [zoom, setZoom] = useState(1)
   const [mapResetKey, setMapResetKey] = useState(0)
@@ -50,17 +56,18 @@ export function HomePage() {
   const newlyEarnedCheckpoint = celebration.unlockedMilestones
     ?.map((id) => routeCheckpointMilestoneById.get(id))
     .find(Boolean)
+  const katakanaJustUnlocked = celebration.unlockedMilestones?.includes(KATAKANA_UNLOCK_MILESTONE_ID)
   const routeProgress = useMemo(() => new Map(routes.map((route) => {
     const stationIds = routeStationIds(route.id)
-    const effort = routeEffortProgress(route.orderedStationIds, stationById, state.progress)
+    const effort = routeEffortProgress(route.orderedStationIds, stationById, progress, learningMode)
     return [route.id, {
       stationIds,
-      completed: completedStationCount(stationIds, stationById, state.progress),
-      achievement: routeAchievementLevel(stationIds, stationById, state.progress),
+      completed: completedStationCount(stationIds, stationById, progress, learningMode),
+      achievement: routeAchievementLevel(stationIds, stationById, progress, learningMode),
       effort,
       checkpoints: ROUTE_CHECKPOINT_RATIOS.filter((ratio) => effort.ratio >= ratio).length,
     }]
-  })), [routeStationIds, state.progress, stationById])
+  })), [learningMode, progress, routeStationIds, stationById])
   const operatorProgress = useMemo(() => new Map(railwayOperators.map((operator) => {
     return [operator.id, {
       completedRoutes: operator.routeIds.filter((routeId) => routeProgress.get(routeId)?.achievement !== 'none').length,
@@ -70,9 +77,9 @@ export function HomePage() {
   const operatorUnlockProgress = useMemo(() => new Map(railwayOperators.flatMap((operator) => {
     const milestone = operator.unlockMilestoneId ? unlockMilestoneById.get(operator.unlockMilestoneId) : undefined
     return milestone
-      ? [[operator.id, calculateUnlockProgress(milestone, { routes, stationById, progress: state.progress })] as const]
+      ? [[operator.id, calculateUnlockProgress(milestone, { routes, stationById, progress: state.progressByMode.hiragana })] as const]
       : []
-  })), [state.progress, stationById])
+  })), [state.progressByMode.hiragana, stationById])
   const selectedProgress = routeProgress.get(selectedRoute.id) ?? {
     stationIds: [], completed: 0, achievement: 'none' as const,
     effort: { practicedPositions: 0, totalPositions: 0, ratio: 0 }, checkpoints: 0,
@@ -93,9 +100,14 @@ export function HomePage() {
     } else {
       return
     }
-    setParams({ route: routeId })
+    setParams({ route: routeId, ...(learningMode === 'katakana' ? { learning: 'katakana' } : {}) })
     setZoom(1)
     setMapResetKey((value) => value + 1)
+  }
+
+  const chooseLearningMode = (nextMode: 'hiragana' | 'katakana') => {
+    setLearningMode(nextMode)
+    setParams({ route: selectedRoute.id, ...(nextMode === 'katakana' ? { learning: 'katakana' } : {}) })
   }
 
   const chooseOperator = (operatorId: string) => {
@@ -114,7 +126,7 @@ export function HomePage() {
     if (!route) return
     unlockRoute(routeId)
     setLastRouteByOperator((current) => ({ ...current, [route.operatorId]: routeId }))
-    setParams({ route: routeId })
+    setParams({ route: routeId, ...(learningMode === 'katakana' ? { learning: 'katakana' } : {}) })
     setZoom(1)
     setMapResetKey((value) => value + 1)
   }
@@ -139,7 +151,7 @@ export function HomePage() {
       setLastRouteByOperator((current) => ({ ...current, [nextRoute.operatorId]: nextRoute.id }))
       setZoom(1)
       setMapResetKey((value) => value + 1)
-      navigate(`/?route=${nextRoute.id}`, { replace: true, state: null })
+      navigate(`/?route=${nextRoute.id}&learning=${learningMode}`, { replace: true, state: null })
     }
   }
 
@@ -166,15 +178,25 @@ export function HomePage() {
           <div className="celebration" role="status">
             <span className="celebration-spark" aria-hidden="true">✦</span>
             <div>
-              <strong>{newlyEarnedCheckpoint ? `${Math.round(newlyEarnedCheckpoint.ratio * 100)}% くかんスタンプ！` : celebration.allFreeWritten ? 'おてほんなしで ぜんぶ かけた！' : celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
-              <span>{stationById.get(celebration.celebrateStationId)?.reading}</span>
+              <strong>{katakanaJustUnlocked ? 'カタカナが ひらいた！' : newlyEarnedCheckpoint ? `${Math.round(newlyEarnedCheckpoint.ratio * 100)}% くかんスタンプ！` : celebration.allFreeWritten ? 'おてほんなしで ぜんぶ かけた！' : celebration.firstAdd ? 'えきが ふえた！' : 'また かけたね！'}</strong>
+              <span>{readingForMode(stationById.get(celebration.celebrateStationId)?.reading ?? '', learningMode)}</span>
             </div>
           </div>
         )}
 
-        <Link className="kana-search-link" to="/kana">
-          <span className="kana-search-sample" aria-hidden="true">あ</span>
-          <span><strong>ひらがなから さがす</strong><small>もじを おして、えきを みつけよう</small></span>
+        <div className="learning-mode-panel">
+          <div className="learning-mode-switch" aria-label="れんしゅうする もじ">
+            <button type="button" className={learningMode === 'hiragana' ? 'selected' : ''} onClick={() => chooseLearningMode('hiragana')}>あ ひらがな</button>
+            <button type="button" className={learningMode === 'katakana' ? 'selected' : ''} disabled={!katakanaUnlocked} onClick={() => chooseLearningMode('katakana')}>
+              ア カタカナ{!katakanaUnlocked && <small>あと {Math.max(0, KATAKANA_UNLOCK_STATIONS - katakanaCompleted)}えき</small>}
+            </button>
+          </div>
+          {!katakanaUnlocked && <p><MaterialIcon name="lock" filled />ひらがなで {KATAKANA_UNLOCK_STATIONS}えき クリアすると カタカナが ひらくよ</p>}
+        </div>
+
+        <Link className="kana-search-link" to={`/kana?learning=${learningMode}`}>
+          <span className="kana-search-sample" aria-hidden="true">{learningMode === 'katakana' ? 'ア' : 'あ'}</span>
+          <span><strong>{learningMode === 'katakana' ? 'カタカナ' : 'ひらがな'}から さがす</strong><small>もじを おして、えきを みつけよう</small></span>
           <MaterialIcon name="arrow_forward" />
         </Link>
 
@@ -251,7 +273,7 @@ export function HomePage() {
             celebrateRouteLevel={activeRouteCelebration?.routeId === selectedRoute.id ? activeRouteCelebration.level : undefined}
             routeCelebrationKey={routeCelebrationReplayKey}
             scrollResetKey={mapResetKey}
-            onSelect={(stationId) => navigate(`/station/${stationId}?route=${selectedRoute.id}`)}
+            onSelect={(stationId) => navigate(`/station/${stationId}?route=${selectedRoute.id}&learning=${learningMode}`)}
           />
           <div className="map-legend" aria-label="えきの しるし">
             <span><i className="legend-dot" />まだの えき</span>
@@ -269,8 +291,8 @@ export function HomePage() {
             </div>
             <div className="found-list">
               {customUnplaced.map((station) => (
-                <button key={station.id} type="button" onClick={() => navigate(`/station/${station.id}?route=found`)}>
-                  <strong>{station.displayName}</strong><span>{station.reading}</span>
+                <button key={station.id} type="button" onClick={() => navigate(`/station/${station.id}?route=found&learning=${learningMode}`)}>
+                  <strong>{station.displayName}</strong><span>{readingForMode(station.reading, learningMode)}</span>
                 </button>
               ))}
             </div>
@@ -330,6 +352,12 @@ export function HomePage() {
               <div className="operator-unlock-reward" role="status">
                 <MaterialIcon name="lock_open" filled />
                 <span><strong>{newlyUnlockedOperator.name}が ひらいた！</strong><small>あたらしい 9ろせんへ しゅっぱつ！</small></span>
+              </div>
+            )}
+            {katakanaJustUnlocked && (
+              <div className="operator-unlock-reward" role="status">
+                <MaterialIcon name="translate" filled />
+                <span><strong>カタカナが ひらいた！</strong><small>「ア カタカナ」を おして しゅっぱつ！</small></span>
               </div>
             )}
             <div className="route-reward-actions">

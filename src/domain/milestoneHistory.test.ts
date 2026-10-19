@@ -28,14 +28,28 @@ describe('マイルストーン履歴', () => {
       achievedAt,
     )
     expect(events).toEqual([
-      { id: checkpoint.id, kind: 'route-stamp', routeId: 'kodomonokuni', ratio: 0.25, achievedAt },
-      { id: 'route-achievement-kodomonokuni-complete-v1', kind: 'route-complete', routeId: 'kodomonokuni', achievedAt },
+      { id: checkpoint.id, kind: 'route-stamp', routeId: 'kodomonokuni', ratio: 0.25, achievedAt, learningMode: 'hiragana' },
+      { id: 'route-achievement-kodomonokuni-complete-v1', kind: 'route-complete', routeId: 'kodomonokuni', achievedAt, learningMode: 'hiragana' },
     ])
   })
 
   it('同じマイルストーンを二重に追加しない', () => {
     const event = milestoneEventsForPracticeResult([], [checkpoint.id], new Map([[checkpoint.id, checkpoint]]), achievedAt)[0]
     expect(appendMilestoneHistory([event], [event])).toEqual([event])
+  })
+
+  it('カタカナの路線クリアをひらがなと別IDで記録する', () => {
+    const [event] = milestoneEventsForPracticeResult(
+      [{ routeId: 'kodomonokuni', level: 'complete' }],
+      [],
+      new Map(),
+      achievedAt,
+      'katakana',
+    )
+    expect(event).toMatchObject({
+      id: 'route-achievement-katakana-kodomonokuni-complete-v1',
+      learningMode: 'katakana',
+    })
   })
 
   it('既存の路線クリアを駅の保存日から復元する', () => {
@@ -61,6 +75,7 @@ describe('マイルストーン履歴', () => {
       routeId: 'test-route',
       achievedAt,
       recovered: true,
+      learningMode: 'hiragana',
     }])
   })
 

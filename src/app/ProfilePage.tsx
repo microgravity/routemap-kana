@@ -3,19 +3,22 @@ import { Link } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { routeChoiceCampaigns } from '../config/unlockCampaigns'
-import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
+import { basicKanaRows, basicKatakanaRows, katakanaOtherRows, smallKanaRows, smallKatakanaRows, voicedKanaRows, voicedKatakanaRows } from '../data/kanaChart'
 import { railwayOperatorById, railwayOperators, routes } from '../data/stations'
 import { formatMilestoneDate } from '../domain/milestoneHistory'
 import { buildProfileSnapshot, type ProfileRouteRecord } from '../domain/profile'
+import { isLearningModeUnlocked } from '../domain/learningModes'
 import type { MilestoneHistoryEvent } from '../domain/types'
 import { isOperatorUnlocked, isRouteUnlocked, routeChoiceStatus, routeCheckpointMilestones, unlockMilestoneById, unlockProgress } from '../domain/unlocks'
 import { useAppState } from './AppState'
 
-const profileKana = [...basicKanaRows.flat(), ...voicedKanaRows.flat(), ...smallKanaRows.flat()]
-  .filter((kana): kana is string => Boolean(kana))
-
 export function ProfilePage() {
-  const { state, stations, stationById, routeStationIds } = useAppState()
+  const { state, stations, stationById, routeStationIds, learningMode, progress, setLearningMode } = useAppState()
+  const profileKana = useMemo(() => (learningMode === 'katakana'
+    ? [...basicKatakanaRows.flat(), ...voicedKatakanaRows.flat(), ...smallKatakanaRows.flat(), ...katakanaOtherRows.flat()]
+    : [...basicKanaRows.flat(), ...voicedKanaRows.flat(), ...smallKanaRows.flat()]
+  ).filter((kana): kana is string => Boolean(kana)), [learningMode])
+  const katakanaUnlocked = isLearningModeUnlocked('katakana', stations, state.progressByMode.hiragana, state.unlockedMilestones)
   const routeInputs = useMemo(() => routes.map((route) => ({
     route,
     stationIds: routeStationIds(route.id),
@@ -24,10 +27,11 @@ export function ProfilePage() {
   const profile = useMemo(() => buildProfileSnapshot(
     stations,
     routeInputs,
-    state.progress,
+    progress,
     state.unlockedMilestones,
     routeCheckpointMilestones,
-  ), [routeInputs, state.progress, state.unlockedMilestones, stations])
+    learningMode,
+  ), [learningMode, progress, routeInputs, state.unlockedMilestones, stations])
   const routeRecordById = useMemo(
     () => new Map(profile.routes.map((route) => [route.routeId, route])),
     [profile.routes],
@@ -62,10 +66,15 @@ export function ProfilePage() {
           </div>
         </header>
 
+        <div className="profile-learning-switch learning-mode-switch" aria-label="きろくの もじ">
+          <button type="button" className={learningMode === 'hiragana' ? 'selected' : ''} onClick={() => setLearningMode('hiragana')}>あ ひらがな</button>
+          <button type="button" className={learningMode === 'katakana' ? 'selected' : ''} disabled={!katakanaUnlocked} onClick={() => setLearningMode('katakana')}>ア カタカナ{!katakanaUnlocked && ' 🔒'}</button>
+        </div>
+
         <section className="profile-summary" aria-label="ぜんぶの きろく">
           <SummaryCard icon="star" value={profile.completedStations} label="かけた えき" note={`${profile.startedStations - profile.completedStations}えき れんしゅうちゅう`} tone="yellow" />
           <SummaryCard icon="draw" value={profile.practicedPositions} label="かいた もじ" note={`おてほんなし ${profile.masteredStations}えき`} tone="aqua" />
-          <SummaryCard icon="spellcheck" value={learnedKanaCount} label="れんしゅうした ひらがな" note={`${profileKana.length}もじの ひょう`} tone="orange" />
+          <SummaryCard icon="spellcheck" value={learnedKanaCount} label={`れんしゅうした ${learningMode === 'katakana' ? 'カタカナ' : 'ひらがな'}`} note={`${profileKana.length}もじの ひょう`} tone="orange" />
           <SummaryCard icon="approval" value={profile.earnedStamps} label="くかんスタンプ" note={availableRouteTickets > 0 ? `ろせんきっぷ ${availableRouteTickets}まい` : '25%ごとに もらえるよ'} tone="purple" />
         </section>
 
@@ -77,7 +86,7 @@ export function ProfilePage() {
           {profile.nextGoals.length > 0 ? (
             <div className="next-goal-grid">
               {profile.nextGoals.slice(0, 3).map((goal) => (
-                <Link key={`${goal.routeId}-${goal.kind}`} className="next-goal-card" to={`/?route=${goal.routeId}`} style={{ '--route-color': goal.routeColor } as React.CSSProperties}>
+                <Link key={`${goal.routeId}-${goal.kind}`} className="next-goal-card" to={`/?route=${goal.routeId}&learning=${learningMode}`} style={{ '--route-color': goal.routeColor } as React.CSSProperties}>
                   <span className="next-goal-route"><i aria-hidden="true" />{goal.routeName}</span>
                   <strong>{goal.label}</strong>
                   <span className="next-goal-remaining">あと {goal.remaining}もじ</span>
@@ -100,7 +109,7 @@ export function ProfilePage() {
             {railwayOperators.map((operator) => {
               const operatorUnlocked = isOperatorUnlocked(operator, state.unlockedMilestones)
               const milestone = operator.unlockMilestoneId ? unlockMilestoneById.get(operator.unlockMilestoneId) : undefined
-              const access = milestone ? unlockProgress(milestone, { routes, stationById, progress: state.progress }) : undefined
+              const access = milestone ? unlockProgress(milestone, { routes, stationById, progress: state.progressByMode.hiragana }) : undefined
               const routeRecords = operator.routeIds.flatMap((routeId) => {
                 const record = routeRecordById.get(routeId)
                 return record ? [record] : []
@@ -119,7 +128,7 @@ export function ProfilePage() {
                     <MaterialIcon name="expand_more" className="profile-operator-chevron" />
                   </summary>
                     <div className="profile-route-list">
-                      {routeRecords.map((record) => <ProfileRouteCard key={record.routeId} route={record} />)}
+                      {routeRecords.map((record) => <ProfileRouteCard key={record.routeId} route={record} learningMode={learningMode} />)}
                     </div>
                 </details>
               ) : (
@@ -143,7 +152,7 @@ export function ProfilePage() {
           {medals.length > 0 ? (
             <div className="profile-medals">
               {medals.map((route) => (
-                <Link key={route.routeId} to={`/?route=${route.routeId}`} className={`profile-medal profile-medal--${route.achievement}`} style={{ '--route-color': route.color } as React.CSSProperties}>
+                <Link key={route.routeId} to={`/?route=${route.routeId}&learning=${learningMode}`} className={`profile-medal profile-medal--${route.achievement}`} style={{ '--route-color': route.color } as React.CSSProperties}>
                   <span className="profile-medal-face" aria-hidden="true"><MaterialIcon name="workspace_premium" filled /></span>
                   <strong>{route.name}</strong>
                   <small>{route.achievement === 'master' ? 'ろせんマスター' : 'ぜんえき クリア'}</small>
@@ -158,12 +167,12 @@ export function ProfilePage() {
         <section className="profile-section" aria-labelledby="learned-kana-title">
           <div className="profile-section-heading profile-section-heading--with-link">
             <span className="profile-section-icon profile-section-icon--kana">あ</span>
-            <div><p className="eyebrow">みどりは れんしゅうずみ</p><h2 id="learned-kana-title">ひらがなの きろく</h2></div>
-            <Link to="/kana" className="profile-heading-link">ごじゅうおんを みる<MaterialIcon name="arrow_forward" /></Link>
+            <div><p className="eyebrow">みどりは れんしゅうずみ</p><h2 id="learned-kana-title">{learningMode === 'katakana' ? 'カタカナ' : 'ひらがな'}の きろく</h2></div>
+            <Link to={`/kana?learning=${learningMode}`} className="profile-heading-link">ごじゅうおんを みる<MaterialIcon name="arrow_forward" /></Link>
           </div>
           <div className="profile-kana-grid" aria-label={`${learnedKanaCount}もじ れんしゅうした`}>
             {profileKana.map((kana) => profile.practicedKana.has(kana) ? (
-              <Link key={kana} to={`/kana/${encodeURIComponent(kana)}`} className="profile-kana profile-kana--learned" aria-label={`${kana}、れんしゅうした`}>
+              <Link key={kana} to={`/kana/${encodeURIComponent(kana)}?learning=${learningMode}`} className="profile-kana profile-kana--learned" aria-label={`${kana}、れんしゅうした`}>
                 {kana}<MaterialIcon name="check" filled />
               </Link>
             ) : <span key={kana} className="profile-kana" aria-label={`${kana}、まだ`}>{kana}</span>)}
@@ -185,10 +194,10 @@ export function ProfilePage() {
                     <span className="profile-history-stamp" aria-hidden="true"><MaterialIcon name={historyIcon(event)} filled /></span>
                     <div>
                       <time dateTime={event.achievedAt}>{formatMilestoneDate(event.achievedAt)}</time>
-                      <strong>{operator?.shortName ? `${operator.shortName}　` : ''}{route?.name ?? 'ろせん'}　{historyLabel(event)}</strong>
+                      <strong>{event.learningMode === 'katakana' ? 'カタカナで　' : ''}{operator?.shortName ? `${operator.shortName}　` : ''}{route?.name ?? 'ろせん'}　{historyLabel(event)}</strong>
                       {event.recovered && <small>これまでの きろくから ふっかつ</small>}
                     </div>
-                    {route && <Link to={`/?route=${route.id}`} aria-label={`${route.name}の ろせんずを みる`}><MaterialIcon name="arrow_forward" /></Link>}
+                    {route && <Link to={`/?route=${route.id}&learning=${event.learningMode}`} aria-label={`${route.name}の ろせんずを みる`}><MaterialIcon name="arrow_forward" /></Link>}
                   </li>
                 )
               })}
@@ -223,7 +232,7 @@ function SummaryCard({ icon, value, label, note, tone }: { icon: string; value: 
   )
 }
 
-function ProfileRouteCard({ route }: { route: ProfileRouteRecord }) {
+function ProfileRouteCard({ route, learningMode }: { route: ProfileRouteRecord; learningMode: 'hiragana' | 'katakana' }) {
   const content = (
     <>
       <div className="profile-route-heading">
@@ -248,6 +257,6 @@ function ProfileRouteCard({ route }: { route: ProfileRouteRecord }) {
     </>
   )
   return route.unlocked
-    ? <Link to={`/?route=${route.routeId}`} className="profile-route-card" style={{ '--route-color': route.color } as React.CSSProperties}>{content}</Link>
+    ? <Link to={`/?route=${route.routeId}&learning=${learningMode}`} className="profile-route-card" style={{ '--route-color': route.color } as React.CSSProperties}>{content}</Link>
     : <article className="profile-route-card profile-route-card--locked" style={{ '--route-color': route.color } as React.CSSProperties}>{content}</article>
 }

@@ -2,7 +2,7 @@ import { appendPracticeHistory, dailyPracticeSummaries } from './practiceHistory
 import type { PracticeHistoryEvent } from './types'
 
 function event(id: string, practicedAt: string, stationId: string, stationName: string, kana: string, freeWritten = false): PracticeHistoryEvent {
-  return { id, practicedAt, stationId, stationName, kana, position: 0, mode: freeWritten ? 'free' : 'trace', freeWritten }
+  return { id, practicedAt, stationId, stationName, kana, position: 0, mode: freeWritten ? 'free' : 'trace', freeWritten, learningMode: 'hiragana' }
 }
 
 describe('日別の練習記録', () => {
@@ -21,6 +21,7 @@ describe('日別の練習記録', () => {
         characterCount: 2,
         kanaCounts: [{ kana: 'ぶ', count: 1 }, { kana: 'し', count: 1 }],
         freeWrittenCount: 1,
+        learningModes: [{ mode: 'hiragana', count: 2 }],
       },
       {
         date: '2026-09-12',
@@ -29,6 +30,7 @@ describe('日別の練習記録', () => {
         characterCount: 1,
         kanaCounts: [{ kana: 'し', count: 1 }],
         freeWrittenCount: 0,
+        learningModes: [{ mode: 'hiragana', count: 1 }],
       },
     ])
   })

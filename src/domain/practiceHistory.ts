@@ -1,4 +1,4 @@
-import type { PracticeHistoryEvent, PracticeMode, Station } from './types'
+import type { LearningModeId, PracticeHistoryEvent, PracticeMode, Station } from './types'
 
 const MAX_PRACTICE_HISTORY = 5000
 
@@ -9,6 +9,7 @@ export interface DailyPracticeSummary {
   characterCount: number
   kanaCounts: Array<{ kana: string; count: number }>
   freeWrittenCount: number
+  learningModes: Array<{ mode: Extract<LearningModeId, 'hiragana' | 'katakana'>; count: number }>
 }
 
 export function createPracticeHistoryEvent(
@@ -17,11 +18,12 @@ export function createPracticeHistoryEvent(
   position: number,
   mode: PracticeMode,
   freeWritten: boolean,
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'>,
   practicedAt = new Date().toISOString(),
 ): PracticeHistoryEvent {
   const nonce = Math.random().toString(36).slice(2, 10)
   return {
-    id: `practice-${practicedAt}-${station.id}-${position}-${nonce}`,
+    id: `practice-${learningMode}-${practicedAt}-${station.id}-${position}-${nonce}`,
     practicedAt,
     stationId: station.id,
     stationName: station.displayName,
@@ -29,6 +31,7 @@ export function createPracticeHistoryEvent(
     position,
     mode,
     freeWritten,
+    learningMode,
   }
 }
 
@@ -65,9 +68,11 @@ export function dailyPracticeSummaries(
     .map(([date, events]) => {
       const stationMap = new Map<string, string>()
       const kanaMap = new Map<string, number>()
+      const modeMap = new Map<Extract<LearningModeId, 'hiragana' | 'katakana'>, number>()
       for (const event of events) {
         stationMap.set(event.stationId, event.stationName)
         kanaMap.set(event.kana, (kanaMap.get(event.kana) ?? 0) + 1)
+        modeMap.set(event.learningMode, (modeMap.get(event.learningMode) ?? 0) + 1)
       }
       return {
         date,
@@ -76,6 +81,7 @@ export function dailyPracticeSummaries(
         characterCount: events.length,
         kanaCounts: [...kanaMap].map(([kana, count]) => ({ kana, count })),
         freeWrittenCount: events.filter((event) => event.freeWritten).length,
+        learningModes: [...modeMap].map(([mode, count]) => ({ mode, count })),
       }
     })
 }

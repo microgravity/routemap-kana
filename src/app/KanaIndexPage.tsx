@@ -1,22 +1,28 @@
-import { useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
-import { basicKanaRows, smallKanaRows, voicedKanaRows } from '../data/kanaChart'
+import { basicKanaRows, basicKatakanaRows, katakanaOtherRows, smallKanaRows, smallKatakanaRows, voicedKanaRows, voicedKatakanaRows } from '../data/kanaChart'
 import { railwayOperators, routes, stationCodeForRoute } from '../data/stations'
-import { normalizeReading, splitKana } from '../domain/kana'
+import { normalizeReading, readingForMode, splitKana } from '../domain/kana'
 import { isStationFreeWritten, isStationPracticed, practicedKanaSet, reconcileProgress } from '../domain/progress'
 import { buildKanaStationIndex, matchesForKana } from '../domain/stationIndex'
 import type { Route } from '../domain/types'
 import { isRouteUnlocked } from '../domain/unlocks'
 import { useAppState } from './AppState'
 
-const listedKana = new Set([...basicKanaRows.flat(), ...voicedKanaRows.flat(), ...smallKanaRows.flat()].filter((kana): kana is string => Boolean(kana)))
-
 export function KanaIndexPage() {
   const { kana: routeKana } = useParams()
   const navigate = useNavigate()
-  const { stations, stationById, routeStationIds, state } = useAppState()
+  const [params] = useSearchParams()
+  const { stations, stationById, routeStationIds, state, learningMode, progress, setLearningMode } = useAppState()
+  const requestedLearningMode = params.get('learning') === 'katakana' ? 'katakana' : params.get('learning') === 'hiragana' ? 'hiragana' : learningMode
+  useEffect(() => { setLearningMode(requestedLearningMode) }, [requestedLearningMode, setLearningMode])
+  const basicRows = learningMode === 'katakana' ? basicKatakanaRows : basicKanaRows
+  const voicedRows = learningMode === 'katakana' ? voicedKatakanaRows : voicedKanaRows
+  const smallRows = learningMode === 'katakana' ? smallKatakanaRows : smallKanaRows
+  const extraRows = learningMode === 'katakana' ? katakanaOtherRows : []
+  const listedKana = useMemo(() => new Set([...basicRows.flat(), ...voicedRows.flat(), ...smallRows.flat(), ...extraRows.flat()].filter((kana): kana is string => Boolean(kana))), [basicRows, extraRows, smallRows, voicedRows])
   const unlockedRoutes = useMemo(
     () => routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones)),
     [state.unlockedMilestones],
@@ -29,8 +35,9 @@ export function KanaIndexPage() {
     const accessibleIds = new Set(indexedRoutes.flatMap((route) => route.orderedStationIds))
     return stations.filter((station) => accessibleIds.has(station.id) || (!station.builtIn && !state.customStations.find((item) => item.id === station.id)?.routeId))
   }, [indexedRoutes, state.customStations, stations])
-  const index = useMemo(() => buildKanaStationIndex(indexedStations, indexedRoutes), [indexedRoutes, indexedStations])
-  const practicedKana = useMemo(() => practicedKanaSet(indexedStations, state.progress), [indexedStations, state.progress])
+  const targetStations = useMemo(() => indexedStations.map((station) => ({ ...station, reading: readingForMode(station.reading, learningMode) })), [indexedStations, learningMode])
+  const index = useMemo(() => buildKanaStationIndex(targetStations, indexedRoutes), [indexedRoutes, targetStations])
+  const practicedKana = useMemo(() => practicedKanaSet(indexedStations, progress, learningMode), [indexedStations, learningMode, progress])
   const normalizedKana = routeKana ? normalizeReading(routeKana) : ''
   const selectedKana = splitKana(normalizedKana).length === 1 && listedKana.has(normalizedKana) ? normalizedKana : ''
   const matches = selectedKana ? matchesForKana(index, selectedKana) : []
@@ -39,7 +46,7 @@ export function KanaIndexPage() {
     <div className={`page-shell kana-index-page ${state.settings.reduceMotion ? 'reduce-motion' : ''}`}>
       <AppHeader compact />
       <main className="kana-index-main">
-        <Link className="back-link" to={selectedKana ? '/kana' : '/'}><MaterialIcon name="arrow_back" />{selectedKana ? 'もじの ひょう' : 'ろせんず'}</Link>
+        <Link className="back-link" to={selectedKana ? `/kana?learning=${learningMode}` : `/?learning=${learningMode}`}><MaterialIcon name="arrow_back" />{selectedKana ? 'もじの ひょう' : 'ろせんず'}</Link>
         {selectedKana ? (
           <section aria-labelledby="kana-results-title">
             <div className="kana-results-heading">
@@ -55,12 +62,13 @@ export function KanaIndexPage() {
                 const station = stationById.get(match.stationId)
                 if (!station) return null
                 const primaryRouteId = match.routeIds[0] ?? 'found'
-                const stationUrl = `/station/${station.id}?route=${primaryRouteId}&focus=${match.positions[0]}&from=kana&kana=${encodeURIComponent(selectedKana)}`
-                const stationProgress = reconcileProgress(state.progress[station.id], station.reading)
-                const stationKanaLength = splitKana(station.reading).length
-                const stationStatus = isStationFreeWritten(stationProgress, station.reading)
+                const targetReading = readingForMode(station.reading, learningMode)
+                const stationUrl = `/station/${station.id}?route=${primaryRouteId}&focus=${match.positions[0]}&from=kana&kana=${encodeURIComponent(selectedKana)}&learning=${learningMode}`
+                const stationProgress = reconcileProgress(progress[station.id], targetReading)
+                const stationKanaLength = splitKana(targetReading).length
+                const stationStatus = isStationFreeWritten(stationProgress, targetReading)
                   ? 'master'
-                  : isStationPracticed(stationProgress, station.reading)
+                  : isStationPracticed(stationProgress, targetReading)
                     ? 'complete'
                     : stationProgress.practicedPositions.length > 0 ? 'partial' : 'none'
                 return (
@@ -70,7 +78,7 @@ export function KanaIndexPage() {
                         <span className="kana-result-name">{station.displayName}</span>
                         <StationPracticeStatus status={stationStatus} practiced={stationProgress.practicedPositions.length} total={stationKanaLength} />
                       </span>
-                      <span className="kana-result-reading">{highlightReading(station.reading, selectedKana)}</span>
+                      <span className="kana-result-reading">{highlightReading(targetReading, selectedKana)}</span>
                       <span className="route-badges" aria-label="この えきの ろせん">
                         {match.routeIds.length > 0 ? match.routeIds.map((routeId) => {
                           const route = routes.find((item) => item.id === routeId)
@@ -87,7 +95,7 @@ export function KanaIndexPage() {
                           key={position}
                           type="button"
                           className="icon-button"
-                          onClick={() => navigate(`/practice/${station.id}/${position}?route=${primaryRouteId}`)}
+                          onClick={() => navigate(`/practice/${station.id}/${position}?route=${primaryRouteId}&learning=${learningMode}`)}
                         >
                           <MaterialIcon name="draw" />
                           {match.positions.length > 1 ? `${occurrenceIndex + 1}こめの「${selectedKana}」を かく` : `この「${selectedKana}」を かく`}
@@ -103,14 +111,15 @@ export function KanaIndexPage() {
           <section aria-labelledby="kana-index-title">
             <div className="kana-index-heading">
               <p className="eyebrow">もじを おして みつけよう</p>
-              <h1 id="kana-index-title">ひらがなから さがす</h1>
+              <h1 id="kana-index-title">{learningMode === 'katakana' ? 'カタカナ' : 'ひらがな'}から さがす</h1>
               <p>えきの なまえに ある もじは、おせるよ。</p>
               <p className="kana-practice-legend"><MaterialIcon name="check" />れんしゅうした もじ</p>
             </div>
-            <KanaTable title="ごじゅうおん" rows={basicKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
+            <KanaTable title="ごじゅうおん" rows={basicRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}?learning=${learningMode}`)} />
             <div className="kana-extra-grid">
-              <KanaTable title="だくおん" rows={voicedKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
-              <KanaTable title="ちいさい もじ" rows={smallKanaRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}`)} />
+              <KanaTable title="だくおん" rows={voicedRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}?learning=${learningMode}`)} />
+              <KanaTable title="ちいさい もじ" rows={smallRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}?learning=${learningMode}`)} />
+              {extraRows.length > 0 && <KanaTable title="のばす おと" rows={extraRows} index={index} practicedKana={practicedKana} onChoose={(kana) => navigate(`/kana/${encodeURIComponent(kana)}?learning=${learningMode}`)} />}
             </div>
           </section>
         )}
@@ -127,7 +136,7 @@ function StationPracticeStatus({ status, practiced, total }: { status: 'none' | 
 }
 
 function KanaTable({ title, rows, index, practicedKana, onChoose }: { title: string; rows: Array<Array<string | null>>; index: ReturnType<typeof buildKanaStationIndex>; practicedKana: ReadonlySet<string>; onChoose: (kana: string) => void }) {
-  const titleId = `kana-table-${title === 'ごじゅうおん' ? 'basic' : title === 'だくおん' ? 'voiced' : 'small'}`
+  const titleId = `kana-table-${title === 'ごじゅうおん' ? 'basic' : title === 'だくおん' ? 'voiced' : title === 'ちいさい もじ' ? 'small' : 'other'}`
   return (
     <section className="kana-table-card" aria-labelledby={titleId}>
       <h2 id={titleId}>{title}</h2>

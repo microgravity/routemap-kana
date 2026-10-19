@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { routeChoiceCampaignByOperatorId } from '../config/unlockCampaigns'
 import { builtInStations, routes } from '../data/stations'
-import { normalizeReading, splitKana } from '../domain/kana'
+import { normalizeReading, readingForMode, splitKana } from '../domain/kana'
+import { isLearningModeUnlocked, KATAKANA_UNLOCK_MILESTONE_ID, katakanaUnlockCount, KATAKANA_UNLOCK_STATIONS, type PracticeLearningMode } from '../domain/learningModes'
 import { appendMilestoneHistory, milestoneEventsForPracticeResult, recoverRouteAchievementHistory } from '../domain/milestoneHistory'
 import { appendPracticeHistory, createPracticeHistoryEvent } from '../domain/practiceHistory'
 import { completeFreeWrittenPosition, completePosition, freshProgress, isStationFreeWritten, isStationPracticed, newlyUnlockedRouteAchievements, reconcileProgress, type RouteAchievement } from '../domain/progress'
@@ -14,6 +15,9 @@ interface AppStateValue {
   stations: Station[]
   stationById: Map<string, Station>
   storageWarning?: string
+  learningMode: PracticeLearningMode
+  progress: PersistedState['progressByMode']['hiragana']
+  setLearningMode: (mode: PracticeLearningMode) => void
   routeStationIds: (routeId: string) => string[]
   updateSettings: (patch: Partial<AppSettings>) => void
   markPositionComplete: (stationId: string, position: number, mode: PracticeMode, freeWritten?: boolean) => { firstAdd: boolean; allComplete: boolean; allFreeWritten: boolean; routeAchievements: RouteAchievement[]; unlockedMilestones: string[] }
@@ -46,10 +50,13 @@ function routeStationIdsForState(routeId: string, state: AppState): string[] {
 function withEarnedMilestones(state: AppState): AppState {
   const stations = builtInStations.map((station) => ({ ...station, ...state.stationOverrides[station.id] }))
   const stationById = new Map(stations.map((station) => [station.id, station]))
-  const unlockedMilestones = grantEarnedMilestones(
+  let unlockedMilestones = grantEarnedMilestones(
     migrateUnlockMilestones(state.unlockedMilestones, state.unlockSystemVersion),
-    { routes, stationById, progress: state.progress },
+    { routes, stationById, progress: state.progressByMode.hiragana },
   )
+  if (katakanaUnlockCount(stations, state.progressByMode.hiragana) >= KATAKANA_UNLOCK_STATIONS) {
+    unlockedMilestones = [...new Set([...unlockedMilestones, KATAKANA_UNLOCK_MILESTONE_ID])]
+  }
   return unlockedMilestones.length === state.unlockedMilestones.length && state.unlockSystemVersion === UNLOCK_SYSTEM_VERSION
     ? state
     : { ...state, unlockSystemVersion: UNLOCK_SYSTEM_VERSION, unlockedMilestones }
@@ -65,13 +72,17 @@ function withRecoveredMilestoneHistory(state: AppState): AppState {
     state.milestoneHistory,
     routes.map((route) => ({ routeId: route.id, stationIds: routeStationIdsForState(route.id, state) })),
     stationById,
-    state.progress,
+    state.progressByMode.hiragana,
   )
   return milestoneHistory.length === state.milestoneHistory.length ? state : { ...state, milestoneHistory }
 }
 
 function prepareLoadedState(state: AppState): AppState {
-  return withRecoveredMilestoneHistory(withEarnedMilestones(state))
+  const prepared = withRecoveredMilestoneHistory(withEarnedMilestones(state))
+  const stations = builtInStations.map((station) => ({ ...station, ...prepared.stationOverrides[station.id] }))
+  return isLearningModeUnlocked(prepared.settings.learningMode, stations, prepared.progressByMode.hiragana, prepared.unlockedMilestones)
+    ? prepared
+    : { ...prepared, settings: { ...prepared.settings, learningMode: 'hiragana' } }
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
@@ -87,6 +98,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return [...merged, ...state.customStations]
   }, [state.customStations, state.stationOverrides])
   const stationById = useMemo(() => new Map(stations.map((station) => [station.id, station])), [stations])
+  const learningMode = state.settings.learningMode
+  const progress = state.progressByMode[learningMode]
 
   useEffect(() => {
     try {
@@ -105,43 +118,59 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, settings: { ...current.settings, ...patch } }))
   }, [])
 
+  const setLearningMode = useCallback((mode: PracticeLearningMode) => {
+    setState((current) => isLearningModeUnlocked(mode, stations, current.progressByMode.hiragana, current.unlockedMilestones)
+      ? { ...current, settings: { ...current.settings, learningMode: mode } }
+      : current)
+  }, [stations])
+
   const markPositionComplete = useCallback((stationId: string, position: number, mode: PracticeMode, freeWritten = false) => {
     const station = stationById.get(stationId)
     if (!station) return { firstAdd: false, allComplete: false, allFreeWritten: false, routeAchievements: [], unlockedMilestones: [] }
-    const kana = splitKana(station.reading)[position]
+    const targetReading = readingForMode(station.reading, learningMode)
+    const kana = splitKana(targetReading)[position]
     if (!kana) return { firstAdd: false, allComplete: false, allFreeWritten: false, routeAchievements: [], unlockedMilestones: [] }
-    const practiceEvent = createPracticeHistoryEvent(station, kana, position, mode, freeWritten)
-    const previous = reconcileProgress(state.progress[stationId], station.reading)
+    const practiceEvent = createPracticeHistoryEvent(station, kana, position, mode, freeWritten, learningMode)
+    const previous = reconcileProgress(progress[stationId], targetReading)
     const update = freeWritten ? completeFreeWrittenPosition : completePosition
     const completed = update(previous, position)
-    const progressAfter = { ...state.progress, [stationId]: completed }
+    const progressAfter = { ...progress, [stationId]: completed }
     const routeAchievements = newlyUnlockedRouteAchievements(
       routes.map((route) => ({ routeId: route.id, stationIds: routeStationIds(route.id) })),
       stationById,
-      state.progress,
+      progress,
       progressAfter,
+      learningMode,
     )
-    const unlockedAfter = grantEarnedMilestones(state.unlockedMilestones, { routes, stationById, progress: progressAfter })
+    let unlockedAfter = learningMode === 'hiragana'
+      ? grantEarnedMilestones(state.unlockedMilestones, { routes, stationById, progress: progressAfter })
+      : state.unlockedMilestones
+    if (learningMode === 'hiragana' && katakanaUnlockCount([...stationById.values()], progressAfter) >= KATAKANA_UNLOCK_STATIONS) {
+      unlockedAfter = [...new Set([...unlockedAfter, KATAKANA_UNLOCK_MILESTONE_ID])]
+    }
     const unlockedMilestones = unlockedAfter.filter((id) => !state.unlockedMilestones.includes(id))
     const milestoneEvents = milestoneEventsForPracticeResult(
       routeAchievements,
       unlockedMilestones,
       routeCheckpointMilestoneById,
       new Date().toISOString(),
+      learningMode,
     )
     const result = {
       firstAdd: !previous.added,
-      allComplete: isStationPracticed(completed, station.reading),
-      allFreeWritten: isStationFreeWritten(completed, station.reading),
+      allComplete: isStationPracticed(completed, targetReading),
+      allFreeWritten: isStationFreeWritten(completed, targetReading),
       routeAchievements,
       unlockedMilestones,
     }
     setState((current) => {
-      const existing = reconcileProgress(current.progress[stationId], station.reading)
-      const earned = withEarnedMilestones({
+      const activeProgress = current.progressByMode[learningMode]
+      const existing = reconcileProgress(activeProgress[stationId], targetReading)
+      const updated = {
         ...current,
-        progress: { ...current.progress, [stationId]: update(existing, position) },
-      })
+        progressByMode: { ...current.progressByMode, [learningMode]: { ...activeProgress, [stationId]: update(existing, position) } },
+      }
+      const earned = learningMode === 'hiragana' ? withEarnedMilestones(updated) : updated
       return {
         ...earned,
         practiceHistory: appendPracticeHistory(earned.practiceHistory, practiceEvent),
@@ -151,14 +180,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
     })
     return result
-  }, [routeStationIds, state.progress, state.unlockedMilestones, stationById])
+  }, [learningMode, progress, routeStationIds, state.unlockedMilestones, stationById])
 
   const setCurrentPosition = useCallback((stationId: string, position: number) => {
     const station = stationById.get(stationId)
     if (!station) return
     setState((current) => {
-      const progress = reconcileProgress(current.progress[stationId], station.reading)
-      return { ...current, progress: { ...current.progress, [stationId]: { ...progress, currentPosition: position } } }
+      const targetReading = readingForMode(station.reading, current.settings.learningMode)
+      const modeProgress = current.progressByMode[current.settings.learningMode]
+      const item = reconcileProgress(modeProgress[stationId], targetReading)
+      return { ...current, progressByMode: { ...current.progressByMode, [current.settings.learningMode]: { ...modeProgress, [stationId]: { ...item, currentPosition: position } } } }
     })
   }, [stationById])
 
@@ -185,9 +216,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         }
         const previousReading = current.stationOverrides[station.id]?.reading
           ?? builtInStations.find((item) => item.id === station.id)?.reading
-        const progress = { ...current.progress }
-        if (previousReading !== override.reading) delete progress[station.id]
-        return { ...current, stationOverrides: { ...current.stationOverrides, [station.id]: override }, progress }
+        const progressByMode = { hiragana: { ...current.progressByMode.hiragana }, katakana: { ...current.progressByMode.katakana } }
+        if (previousReading !== override.reading) for (const mode of ['hiragana', 'katakana'] as const) delete progressByMode[mode][station.id]
+        return { ...current, stationOverrides: { ...current.stationOverrides, [station.id]: override }, progressByMode }
       }
       const existing = station as CustomStation
       const custom: CustomStation = {
@@ -203,17 +234,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ? current.customStations.map((item) => item.id === custom.id ? custom : item)
         : [...current.customStations, custom]
       const previousReading = current.customStations.find((item) => item.id === custom.id)?.reading
-      const progress = { ...current.progress }
-      if (previousReading && previousReading !== custom.reading) delete progress[custom.id]
-      return { ...current, customStations, progress }
+      const progressByMode = { hiragana: { ...current.progressByMode.hiragana }, katakana: { ...current.progressByMode.katakana } }
+      if (previousReading && previousReading !== custom.reading) for (const mode of ['hiragana', 'katakana'] as const) delete progressByMode[mode][custom.id]
+      return { ...current, customStations, progressByMode }
     })
   }, [])
 
   const deleteCustomStation = useCallback((stationId: string) => {
     setState((current) => {
-      const progress = { ...current.progress }
-      delete progress[stationId]
-      return { ...current, customStations: current.customStations.filter((item) => item.id !== stationId), progress }
+      const progressByMode = { hiragana: { ...current.progressByMode.hiragana }, katakana: { ...current.progressByMode.katakana } }
+      for (const mode of ['hiragana', 'katakana'] as const) delete progressByMode[mode][stationId]
+      return { ...current, customStations: current.customStations.filter((item) => item.id !== stationId), progressByMode }
     })
   }, [])
 
@@ -221,9 +252,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setState((current) => {
       const stationOverrides = { ...current.stationOverrides }
       delete stationOverrides[stationId]
-      const progress = { ...current.progress }
-      delete progress[stationId]
-      return { ...current, stationOverrides, progress }
+      const progressByMode = { hiragana: { ...current.progressByMode.hiragana }, katakana: { ...current.progressByMode.katakana } }
+      for (const mode of ['hiragana', 'katakana'] as const) delete progressByMode[mode][stationId]
+      return { ...current, stationOverrides, progressByMode }
     })
   }, [])
 
@@ -232,6 +263,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     stations,
     stationById,
     storageWarning,
+    learningMode,
+    progress,
+    setLearningMode,
     routeStationIds,
     updateSettings,
     markPositionComplete,

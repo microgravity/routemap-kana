@@ -13,7 +13,7 @@ describe('バックアップ検証', () => {
 
   it('存在しない駅の進捗を拒否する', () => {
     const state = defaultState()
-    state.progress.unknown = {
+    state.progressByMode.hiragana.unknown = {
       readingSnapshot: 'えき',
       practicedPositions: [],
       freeWrittenPositions: [],
@@ -25,7 +25,7 @@ describe('バックアップ検証', () => {
 
   it('初期版の駅IDと進捗をそのまま読み込める', () => {
     const state = defaultState()
-    state.progress['tokyu-ty05'] = {
+    state.progressByMode.hiragana['tokyu-ty05'] = {
       readingSnapshot: 'がくげいだいがく',
       practicedPositions: [0, 3],
       freeWrittenPositions: [0],
@@ -33,7 +33,7 @@ describe('バックアップ検証', () => {
       added: true,
       addedAt: '2026-09-06T00:00:00.000Z',
     }
-    expect(parseBackup(serializeBackup(state)).progress['tokyu-ty05']).toEqual(state.progress['tokyu-ty05'])
+    expect(parseBackup(serializeBackup(state)).progressByMode.hiragana['tokyu-ty05']).toEqual(state.progressByMode.hiragana['tokyu-ty05'])
   })
 
   it('判定設定がない旧データを「ふつう」で読み込む', () => {
@@ -71,8 +71,35 @@ describe('バックアップ検証', () => {
       position: 0,
       mode: 'trace',
       freeWritten: false,
+      learningMode: 'hiragana',
     })
     expect(parseBackup(serializeBackup(state)).practiceHistory).toEqual(state.practiceHistory)
+  })
+
+  it('カタカナ進捗と履歴をひらがなから分離して保持する', () => {
+    const state = defaultState()
+    state.progressByMode.katakana['tokyu-ty01'] = {
+      readingSnapshot: 'シブヤ',
+      practicedPositions: [0],
+      freeWrittenPositions: [],
+      currentPosition: 0,
+      added: true,
+    }
+    state.practiceHistory.push({
+      id: 'practice-katakana-test',
+      practicedAt: '2026-10-19T00:00:00.000Z',
+      stationId: 'tokyu-ty01',
+      stationName: '渋谷',
+      kana: 'シ',
+      position: 0,
+      mode: 'trace',
+      freeWritten: false,
+      learningMode: 'katakana',
+    })
+    const restored = parseBackup(serializeBackup(state))
+    expect(restored.progressByMode.hiragana).toEqual({})
+    expect(restored.progressByMode.katakana['tokyu-ty01']).toEqual(state.progressByMode.katakana['tokyu-ty01'])
+    expect(restored.practiceHistory[0].learningMode).toBe('katakana')
   })
 
   it('段階解除の世代がない旧データを移行対象として読み込む', () => {
@@ -94,6 +121,7 @@ describe('バックアップ検証', () => {
       kind: 'route-complete',
       routeId: 'kodomonokuni',
       achievedAt: '2026-09-05T08:30:00.000Z',
+      learningMode: 'hiragana',
     })
     expect(parseBackup(serializeBackup(state)).milestoneHistory).toEqual(state.milestoneHistory)
   })
@@ -105,19 +133,44 @@ describe('バックアップ検証', () => {
       kind: 'route-complete',
       routeId: 'kodomonokuni',
       achievedAt: 'きょう',
+      learningMode: 'hiragana',
     })
     expect(() => parseBackup(serializeBackup(state))).toThrow(/できごと/)
   })
 
   it('お手本なし進捗がない旧データを空の上位進捗として読み込む', () => {
     const oldState = JSON.parse(serializeBackup(defaultState()))
+    oldState.schemaVersion = 1
+    oldState.progress = oldState.progressByMode.hiragana
+    delete oldState.progressByMode
     oldState.progress['tokyu-ty05'] = {
       readingSnapshot: 'がくげいだいがく',
       practicedPositions: [0, 3],
       currentPosition: 3,
       added: true,
     }
-    expect(parseBackup(JSON.stringify(oldState)).progress['tokyu-ty05'].freeWrittenPositions).toEqual([])
+    expect(parseBackup(JSON.stringify(oldState)).progressByMode.hiragana['tokyu-ty05'].freeWrittenPositions).toEqual([])
+  })
+
+  it('v1進捗をひらがなへ移行し、カタカナを空で始める', () => {
+    const oldState = JSON.parse(serializeBackup(defaultState()))
+    oldState.schemaVersion = 1
+    oldState.progress = {
+      'tokyu-ty01': {
+        readingSnapshot: 'しぶや',
+        practicedPositions: [0],
+        freeWrittenPositions: [],
+        currentPosition: 0,
+        added: true,
+      },
+    }
+    delete oldState.progressByMode
+    delete oldState.settings.learningMode
+    const migrated = parseBackup(JSON.stringify(oldState))
+    expect(migrated.schemaVersion).toBe(2)
+    expect(migrated.progressByMode.hiragana['tokyu-ty01'].practicedPositions).toEqual([0])
+    expect(migrated.progressByMode.katakana).toEqual({})
+    expect(migrated.settings.learningMode).toBe('hiragana')
   })
 
   it('相鉄線へ追加したカスタム駅を読み込める', () => {

@@ -70,9 +70,9 @@
 
 大江戸線は都庁前を中心に環状部と放射部を持ちます。現在の横一列の模式図では、公式駅番号E01〜E38の順で一つの並びとして表示し、画面上に注記を出します。公式路線図画像、ロゴ、図上配置は使用していません。
 
-## ひらがな画順SVG
+## ひらがな・カタカナ画順SVG
 
-[`src/data/kana/glyphs`](../src/data/kana/glyphs)の79ファイルは、Kyleによる [strokesvg](https://github.com/zhengkyl/strokesvg) の`dist/hiragana`から取得しました。取得元commitは [`e4c2c91034e03c9c2f4e95f14f2361a948f52cd0`](https://github.com/zhengkyl/strokesvg/commit/e4c2c91034e03c9c2f4e95f14f2361a948f52cd0) です。
+[`src/data/kana/glyphs`](../src/data/kana/glyphs)のひらがな79ファイルと、[`src/data/kana/katakana-glyphs`](../src/data/kana/katakana-glyphs)のカタカナ81ファイルは、Kyleによる [strokesvg](https://github.com/zhengkyl/strokesvg) の`dist/hiragana`・`dist/katakana`から取得しました。取得元commitは [`e4c2c91034e03c9c2f4e95f14f2361a948f52cd0`](https://github.com/zhengkyl/strokesvg/commit/e4c2c91034e03c9c2f4e95f14f2361a948f52cd0) です。カタカナファイルは2026-10-19に確認・追加しました。
 
 かなSVGはKlee Oneフォント由来で、SIL Open Font License 1.1です。strokesvgのSVG構造と補助コードはMIT Licenseです。本アプリでは配布済みSVGの輪郭と手書き中心線をそのまま同梱し、CSSで色とアニメーションを与えています。
 

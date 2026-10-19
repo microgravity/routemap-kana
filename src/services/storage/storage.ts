@@ -1,5 +1,5 @@
 import { builtInStationById, routes } from '../../data/stations'
-import { isHiraganaReading, normalizeReading, splitKana } from '../../domain/kana'
+import { isHiraganaReading, isKatakanaReading, normalizeReading, readingForMode, splitKana } from '../../domain/kana'
 import type {
   AppSettings,
   CustomStation,
@@ -21,16 +21,17 @@ export const defaultSettings: AppSettings = {
   volume: 1,
   muted: false,
   reduceMotion: false,
+  learningMode: 'hiragana',
 }
 
 export function defaultState(): PersistedState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     unlockSystemVersion: UNLOCK_SYSTEM_VERSION,
     settings: { ...defaultSettings },
     customStations: [],
     stationOverrides: {},
-    progress: {},
+    progressByMode: { hiragana: {}, katakana: {} },
     practiceHistory: [],
     unlockedMilestones: [],
     milestoneHistory: [],
@@ -57,6 +58,7 @@ function validateSettings(value: unknown): AppSettings | null {
       ? value.traceStrictness
       : null
   if (!traceStrictness) return null
+  const learningMode = value.learningMode === 'katakana' ? 'katakana' : 'hiragana'
   return {
     handedness: value.handedness,
     traceStrictness,
@@ -64,6 +66,7 @@ function validateSettings(value: unknown): AppSettings | null {
     volume: value.volume,
     muted: value.muted,
     reduceMotion: value.reduceMotion,
+    learningMode,
   }
 }
 
@@ -140,6 +143,7 @@ function validateMilestoneHistoryEvent(value: unknown): MilestoneHistoryEvent | 
   if (kind === 'route-stamp' && ratio !== 0.25 && ratio !== 0.5 && ratio !== 0.75 && ratio !== 1) return null
   if (kind !== 'route-stamp' && ratio !== undefined) return null
   if (value.recovered !== undefined && typeof value.recovered !== 'boolean') return null
+  const learningMode = value.learningMode === 'katakana' ? 'katakana' : 'hiragana'
   return {
     id,
     kind,
@@ -147,6 +151,7 @@ function validateMilestoneHistoryEvent(value: unknown): MilestoneHistoryEvent | 
     achievedAt,
     ratio: ratio as number | undefined,
     recovered: value.recovered as boolean | undefined,
+    learningMode,
   }
 }
 
@@ -158,7 +163,9 @@ function validatePracticeHistoryEvent(value: unknown): PracticeHistoryEvent | nu
   const stationName = asShortString(value.stationName, 40)
   const kana = asShortString(value.kana, 8)
   const mode = value.mode === 'trace' || value.mode === 'free' ? value.mode : null
-  if (!id || !practicedAt || !stationId || !stationName || !kana || !mode || !isHiraganaReading(kana) || !Number.isFinite(Date.parse(practicedAt))) return null
+  const learningMode = value.learningMode === 'katakana' ? 'katakana' : 'hiragana'
+  const validKana = Boolean(kana && (learningMode === 'katakana' ? isKatakanaReading(kana) : isHiraganaReading(kana)))
+  if (!id || !practicedAt || !stationId || !stationName || !kana || !mode || !validKana || !Number.isFinite(Date.parse(practicedAt))) return null
   if (!Number.isInteger(value.position) || (value.position as number) < 0 || (value.position as number) > 99) return null
   if (typeof value.freeWritten !== 'boolean' || (value.freeWritten && mode !== 'free')) return null
   return {
@@ -170,6 +177,7 @@ function validatePracticeHistoryEvent(value: unknown): PracticeHistoryEvent | nu
     position: value.position as number,
     mode,
     freeWritten: value.freeWritten,
+    learningMode,
   }
 }
 
@@ -181,13 +189,17 @@ export function parseBackup(text: string): PersistedState {
   } catch {
     throw new Error('JSONファイルを よみとれませんでした')
   }
-  if (!isRecord(raw) || raw.schemaVersion !== 1) throw new Error('たいおうしていない データのバージョンです')
+  if (!isRecord(raw) || (raw.schemaVersion !== 1 && raw.schemaVersion !== 2)) throw new Error('たいおうしていない データのバージョンです')
   const settings = validateSettings(raw.settings)
   const unlockSystemVersion = raw.unlockSystemVersion === undefined ? 1 : raw.unlockSystemVersion
   const unlockedMilestonesRaw = raw.unlockedMilestones ?? []
   const milestoneHistoryRaw = raw.milestoneHistory ?? []
   const practiceHistoryRaw = raw.practiceHistory ?? []
-  if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(raw.progress)
+  const rawProgressByMode = raw.schemaVersion === 1
+    ? { hiragana: raw.progress, katakana: {} }
+    : raw.progressByMode
+  if (!settings || !Array.isArray(raw.customStations) || !isRecord(raw.stationOverrides) || !isRecord(rawProgressByMode)
+    || !isRecord(rawProgressByMode.hiragana) || !isRecord(rawProgressByMode.katakana)
     || !Number.isInteger(unlockSystemVersion) || (unlockSystemVersion as number) < 1 || (unlockSystemVersion as number) > UNLOCK_SYSTEM_VERSION
     || !Array.isArray(unlockedMilestonesRaw)
     || !unlockedMilestonesRaw.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 100)
@@ -224,13 +236,15 @@ export function parseBackup(text: string): PersistedState {
   for (const [id, station] of builtInStationById) readings.set(id, stationOverrides[id]?.reading ?? station.reading)
   for (const station of customStations) readings.set(station.id, station.reading)
 
-  const progress: Record<string, PracticeProgress> = {}
-  for (const [id, value] of Object.entries(raw.progress)) {
-    const reading = readings.get(id)
-    if (!reading) throw new Error('れんしゅうした えきが みつかりません')
-    const item = validateProgress(value, reading)
-    if (!item) throw new Error('れんしゅうの データが ただしくありません')
-    progress[id] = item
+  const progressByMode: PersistedState['progressByMode'] = { hiragana: {}, katakana: {} }
+  for (const learningMode of ['hiragana', 'katakana'] as const) {
+    for (const [id, value] of Object.entries(rawProgressByMode[learningMode] as Record<string, unknown>)) {
+      const reading = readings.get(id)
+      if (!reading) throw new Error('れんしゅうした えきが みつかりません')
+      const item = validateProgress(value, readingForMode(reading, learningMode))
+      if (!item) throw new Error('れんしゅうの データが ただしくありません')
+      progressByMode[learningMode][id] = item
+    }
   }
 
   const milestoneHistory: MilestoneHistoryEvent[] = []
@@ -254,12 +268,12 @@ export function parseBackup(text: string): PersistedState {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     unlockSystemVersion: unlockSystemVersion as number,
     settings,
     customStations,
     stationOverrides,
-    progress,
+    progressByMode,
     practiceHistory,
     unlockedMilestones: [...new Set(unlockedMilestonesRaw as string[])],
     milestoneHistory,

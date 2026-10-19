@@ -117,7 +117,8 @@ export function ParentPage() {
     if (!file) return
     try {
       const parsed = parseBackup(await file.text())
-      const summary = `設定、練習記録 ${Object.keys(parsed.progress).length}駅、追加駅 ${parsed.customStations.length}件を置き換えます。\n\n先に現在のバックアップを書き出しましたか？`
+      const practicedStationCount = new Set(Object.values(parsed.progressByMode).flatMap((items) => Object.keys(items))).size
+      const summary = `設定、練習記録 ${practicedStationCount}駅、追加駅 ${parsed.customStations.length}件を置き換えます。\n\n先に現在のバックアップを書き出しましたか？`
       if (!window.confirm(summary)) return
       replaceState(parsed)
       setEditingId('new')
@@ -166,6 +167,7 @@ export function ParentPage() {
                     </header>
                     <div className="parent-activity-stations"><MaterialIcon name="train" filled /><span>{day.stations.map((station) => station.name).join('、')}</span></div>
                     <div className="parent-activity-kana" aria-label={`書いた文字：${day.kanaCounts.map(({ kana, count }) => `${kana}${count > 1 ? `${count}回` : ''}`).join('、')}`}>
+                      {day.learningModes.map(({ mode, count }) => <i key={mode}><MaterialIcon name={mode === 'katakana' ? 'translate' : 'spellcheck'} />{mode === 'katakana' ? 'カタカナ' : 'ひらがな'} {count}文字</i>)}
                       {day.kanaCounts.map(({ kana, count }) => <span key={kana}><b>{kana}</b>{count > 1 && <small>×{count}</small>}</span>)}
                       {day.freeWrittenCount > 0 && <i><MaterialIcon name="hotel_class" filled />お手本なし {day.freeWrittenCount}文字</i>}
                     </div>

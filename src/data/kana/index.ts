@@ -3,10 +3,15 @@ const modules = import.meta.glob('./glyphs/*.svg', {
   query: '?raw',
   import: 'default',
 }) as Record<string, string>
+const katakanaModules = import.meta.glob('./katakana-glyphs/*.svg', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
 
 const glyphs = new Map<string, string>()
 
-for (const [path, svg] of Object.entries(modules)) {
+for (const [path, svg] of Object.entries({ ...modules, ...katakanaModules })) {
   const match = path.match(/\/([^/]+)\.svg$/u)
   if (match) glyphs.set(match[1], svg)
 }
@@ -22,5 +27,5 @@ export function hasGlyph(kana: string): boolean {
 export const glyphSource = {
   name: 'strokesvg',
   url: 'https://github.com/zhengkyl/strokesvg',
-  license: 'SIL Open Font License 1.1（Klee One由来のかなSVG）',
+  license: 'SIL Open Font License 1.1（Klee One由来のひらがな・カタカナSVG）',
 }

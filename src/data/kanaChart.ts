@@ -24,3 +24,8 @@ export const smallKanaRows: string[][] = [
   ['ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'],
   ['ゃ', 'ゅ', 'ょ', 'っ', 'ゎ'],
 ]
+
+export const basicKatakanaRows = basicKanaRows.map((row) => row.map((kana) => kana && String.fromCodePoint(kana.codePointAt(0)! + 0x60)))
+export const voicedKatakanaRows = voicedKanaRows.map((row) => row.map((kana) => String.fromCodePoint(kana.codePointAt(0)! + 0x60)))
+export const smallKatakanaRows = smallKanaRows.map((row) => row.map((kana) => String.fromCodePoint(kana.codePointAt(0)! + 0x60)))
+export const katakanaOtherRows: string[][] = [['ー']]

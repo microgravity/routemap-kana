@@ -1,5 +1,6 @@
 import type { PracticeProgress, Station } from './types'
-import { readingVersion, splitKana } from './kana'
+import { readingForMode, readingVersion, splitKana } from './kana'
+import type { PracticeLearningMode } from './learningModes'
 
 export type RouteAchievementLevel = 'none' | 'complete' | 'master'
 
@@ -77,11 +78,13 @@ export function isStationFreeWritten(progress: PracticeProgress | undefined, rea
 export function practicedKanaSet(
   stations: Iterable<Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode = 'hiragana',
 ): Set<string> {
   const practiced = new Set<string>()
   for (const station of stations) {
-    const current = reconcileProgress(progress[station.id], station.reading)
-    const kana = splitKana(station.reading)
+    const targetReading = readingForMode(station.reading, learningMode)
+    const current = reconcileProgress(progress[station.id], targetReading)
+    const kana = splitKana(targetReading)
     current.practicedPositions.forEach((position) => {
       if (kana[position]) practiced.add(kana[position])
     })
@@ -93,10 +96,11 @@ export function completedStationCount(
   stationIds: string[],
   stationById: ReadonlyMap<string, Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode = 'hiragana',
 ): number {
   return [...new Set(stationIds)].filter((stationId) => {
     const station = stationById.get(stationId)
-    return Boolean(station && isStationPracticed(progress[stationId], station.reading))
+    return Boolean(station && isStationPracticed(progress[stationId], readingForMode(station.reading, learningMode)))
   }).length
 }
 
@@ -104,14 +108,16 @@ export function routeEffortProgress(
   stationIds: readonly string[],
   stationById: ReadonlyMap<string, Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode = 'hiragana',
 ): RouteEffortProgress {
   let practicedPositions = 0
   let totalPositions = 0
   for (const stationId of new Set(stationIds)) {
     const station = stationById.get(stationId)
     if (!station) continue
-    const length = splitKana(station.reading).length
-    const current = reconcileProgress(progress[stationId], station.reading)
+    const targetReading = readingForMode(station.reading, learningMode)
+    const length = splitKana(targetReading).length
+    const current = reconcileProgress(progress[stationId], targetReading)
     totalPositions += length
     practicedPositions += current.practicedPositions.filter((position) => position < length).length
   }
@@ -126,15 +132,16 @@ export function routeAchievementLevel(
   stationIds: string[],
   stationById: ReadonlyMap<string, Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode = 'hiragana',
 ): RouteAchievementLevel {
   const uniqueStationIds = [...new Set(stationIds)]
   if (uniqueStationIds.length === 0) return 'none'
   const stations = uniqueStationIds.map((stationId) => stationById.get(stationId))
   if (stations.some((station) => !station)) return 'none'
-  if (stations.every((station) => station && isStationFreeWritten(progress[station.id], station.reading))) {
+  if (stations.every((station) => station && isStationFreeWritten(progress[station.id], readingForMode(station.reading, learningMode)))) {
     return 'master'
   }
-  if (stations.every((station) => station && isStationPracticed(progress[station.id], station.reading))) {
+  if (stations.every((station) => station && isStationPracticed(progress[station.id], readingForMode(station.reading, learningMode)))) {
     return 'complete'
   }
   return 'none'
@@ -145,11 +152,12 @@ export function newlyUnlockedRouteAchievements(
   stationById: ReadonlyMap<string, Station>,
   before: Record<string, PracticeProgress>,
   after: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode = 'hiragana',
 ): RouteAchievement[] {
   const rank: Record<RouteAchievementLevel, number> = { none: 0, complete: 1, master: 2 }
   return definitions.flatMap(({ routeId, stationIds }) => {
-    const previousLevel = routeAchievementLevel(stationIds, stationById, before)
-    const nextLevel = routeAchievementLevel(stationIds, stationById, after)
+    const previousLevel = routeAchievementLevel(stationIds, stationById, before, learningMode)
+    const nextLevel = routeAchievementLevel(stationIds, stationById, after, learningMode)
     return rank[nextLevel] > rank[previousLevel] && nextLevel !== 'none'
       ? [{ routeId, level: nextLevel }]
       : []

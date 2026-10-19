@@ -73,6 +73,7 @@ export interface PracticeHistoryEvent {
   position: number
   mode: PracticeMode
   freeWritten: boolean
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'>
 }
 
 export type MilestoneHistoryKind = 'route-stamp' | 'route-complete' | 'route-master'
@@ -84,6 +85,7 @@ export interface MilestoneHistoryEvent {
   achievedAt: string
   ratio?: number
   recovered?: boolean
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'>
 }
 
 export interface AppSettings {
@@ -93,15 +95,16 @@ export interface AppSettings {
   volume: number
   muted: boolean
   reduceMotion: boolean
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'>
 }
 
 export interface PersistedState {
-  schemaVersion: 1
+  schemaVersion: 2
   unlockSystemVersion: number
   settings: AppSettings
   customStations: CustomStation[]
   stationOverrides: Record<string, StationOverride>
-  progress: Record<string, PracticeProgress>
+  progressByMode: Record<Extract<LearningModeId, 'hiragana' | 'katakana'>, Record<string, PracticeProgress>>
   practiceHistory: PracticeHistoryEvent[]
   unlockedMilestones: string[]
   milestoneHistory: MilestoneHistoryEvent[]

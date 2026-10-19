@@ -1,9 +1,9 @@
 import { routeAchievementLevel, type RouteAchievement, type RouteProgressDefinition } from './progress'
-import type { MilestoneHistoryEvent, PracticeProgress, Station } from './types'
+import type { LearningModeId, MilestoneHistoryEvent, PracticeProgress, Station } from './types'
 import type { RouteCheckpointMilestone } from './unlocks'
 
-function achievementEventId(routeId: string, level: 'complete' | 'master'): string {
-  return `route-achievement-${routeId}-${level}-v1`
+function achievementEventId(routeId: string, level: 'complete' | 'master', learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'>): string {
+  return learningMode === 'hiragana' ? `route-achievement-${routeId}-${level}-v1` : `route-achievement-${learningMode}-${routeId}-${level}-v1`
 }
 
 export function milestoneEventsForPracticeResult(
@@ -11,6 +11,7 @@ export function milestoneEventsForPracticeResult(
   unlockedMilestoneIds: readonly string[],
   checkpointById: ReadonlyMap<string, RouteCheckpointMilestone>,
   achievedAt: string,
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'> = 'hiragana',
 ): MilestoneHistoryEvent[] {
   const checkpointEvents = unlockedMilestoneIds.flatMap((id): MilestoneHistoryEvent[] => {
     const checkpoint = checkpointById.get(id)
@@ -20,13 +21,15 @@ export function milestoneEventsForPracticeResult(
       routeId: checkpoint.routeId,
       ratio: checkpoint.ratio,
       achievedAt,
+      learningMode,
     }] : []
   })
   const achievementEvents = routeAchievements.map((achievement): MilestoneHistoryEvent => ({
-    id: achievementEventId(achievement.routeId, achievement.level),
+    id: achievementEventId(achievement.routeId, achievement.level, learningMode),
     kind: achievement.level === 'master' ? 'route-master' : 'route-complete',
     routeId: achievement.routeId,
     achievedAt,
+    learningMode,
   }))
   return [...checkpointEvents, ...achievementEvents]
 }
@@ -74,6 +77,7 @@ export function recoverRouteAchievementHistory(
   definitions: readonly RouteProgressDefinition[],
   stationById: ReadonlyMap<string, Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: Extract<LearningModeId, 'hiragana' | 'katakana'> = 'hiragana',
 ): MilestoneHistoryEvent[] {
   const recovered = definitions.flatMap(({ routeId, stationIds }): MilestoneHistoryEvent[] => {
     const level = routeAchievementLevel(stationIds, stationById, progress)
@@ -81,19 +85,21 @@ export function recoverRouteAchievementHistory(
     const achievedAt = latestStationStart(stationIds, progress)
     if (!achievedAt) return []
     const complete: MilestoneHistoryEvent = {
-      id: achievementEventId(routeId, 'complete'),
+      id: achievementEventId(routeId, 'complete', learningMode),
       kind: 'route-complete',
       routeId,
       achievedAt,
       recovered: true,
+      learningMode,
     }
     if (level === 'complete') return [complete]
     return [complete, {
-      id: achievementEventId(routeId, 'master'),
+      id: achievementEventId(routeId, 'master', learningMode),
       kind: 'route-master',
       routeId,
       achievedAt,
       recovered: true,
+      learningMode,
     }]
   })
   return appendMilestoneHistory(current, recovered)

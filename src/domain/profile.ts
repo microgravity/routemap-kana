@@ -1,6 +1,8 @@
 import { completedStationCount, isStationFreeWritten, isStationPracticed, practicedKanaSet, reconcileProgress, routeAchievementLevel, routeEffortProgress, type RouteAchievementLevel } from './progress'
 import type { PracticeProgress, Route, Station } from './types'
 import type { RouteCheckpointMilestone } from './unlocks'
+import { readingForMode } from './kana'
+import type { PracticeLearningMode } from './learningModes'
 
 export interface ProfileRouteInput {
   route: Route
@@ -59,12 +61,13 @@ function freeWrittenPositionCount(
   stationIds: readonly string[],
   stationById: ReadonlyMap<string, Station>,
   progress: Record<string, PracticeProgress>,
+  learningMode: PracticeLearningMode,
 ): number {
   let total = 0
   for (const stationId of new Set(stationIds)) {
     const station = stationById.get(stationId)
     if (!station) continue
-    total += reconcileProgress(progress[stationId], station.reading).freeWrittenPositions.length
+    total += reconcileProgress(progress[stationId], readingForMode(station.reading, learningMode)).freeWrittenPositions.length
   }
   return total
 }
@@ -118,6 +121,7 @@ export function buildProfileSnapshot(
   progress: Record<string, PracticeProgress>,
   unlockedMilestones: readonly string[],
   checkpointMilestones: readonly RouteCheckpointMilestone[],
+  learningMode: PracticeLearningMode = 'hiragana',
 ): ProfileSnapshot {
   const stationById = new Map(stations.map((station) => [station.id, station]))
   const unlockedIds = new Set(unlockedMilestones)
@@ -127,30 +131,31 @@ export function buildProfileSnapshot(
   let practicedPositions = 0
 
   for (const station of stations) {
-    const current = reconcileProgress(progress[station.id], station.reading)
+    const targetReading = readingForMode(station.reading, learningMode)
+    const current = reconcileProgress(progress[station.id], targetReading)
     if (current.practicedPositions.length > 0) startedStations += 1
-    if (isStationPracticed(current, station.reading)) completedStations += 1
-    if (isStationFreeWritten(current, station.reading)) masteredStations += 1
+    if (isStationPracticed(current, targetReading)) completedStations += 1
+    if (isStationFreeWritten(current, targetReading)) masteredStations += 1
     practicedPositions += current.practicedPositions.length
   }
 
   const routeRecords = routeInputs.map(({ route, stationIds, unlocked }): ProfileRouteRecord => {
-    const effort = routeEffortProgress(stationIds, stationById, progress)
+    const effort = routeEffortProgress(stationIds, stationById, progress, learningMode)
     const checkpoints = checkpointMilestones
       .filter((milestone) => milestone.routeId === route.id)
       .sort((left, right) => left.ratio - right.ratio)
-      .map((milestone) => ({ ratio: milestone.ratio, earned: unlockedIds.has(milestone.id) }))
+      .map((milestone) => ({ ratio: milestone.ratio, earned: learningMode === 'hiragana' ? unlockedIds.has(milestone.id) : effort.ratio >= milestone.ratio }))
     return {
       routeId: route.id,
       operatorId: route.operatorId,
       name: route.name,
       color: route.color,
       unlocked,
-      achievement: routeAchievementLevel([...stationIds], stationById, progress),
-      completedStations: completedStationCount([...stationIds], stationById, progress),
+      achievement: routeAchievementLevel([...stationIds], stationById, progress, learningMode),
+      completedStations: completedStationCount([...stationIds], stationById, progress, learningMode),
       totalStations: new Set(stationIds).size,
       practicedPositions: effort.practicedPositions,
-      freeWrittenPositions: freeWrittenPositionCount(stationIds, stationById, progress),
+      freeWrittenPositions: freeWrittenPositionCount(stationIds, stationById, progress, learningMode),
       totalPositions: effort.totalPositions,
       ratio: effort.ratio,
       checkpoints,
@@ -166,10 +171,12 @@ export function buildProfileSnapshot(
     completedStations,
     masteredStations,
     practicedPositions,
-    practicedKana: practicedKanaSet(stations, progress),
+    practicedKana: practicedKanaSet(stations, progress, learningMode),
     completedRoutes: routeRecords.filter((route) => route.unlocked && route.achievement !== 'none').length,
     masteredRoutes: routeRecords.filter((route) => route.unlocked && route.achievement === 'master').length,
-    earnedStamps: checkpointMilestones.filter((milestone) => unlockedIds.has(milestone.id)).length,
+    earnedStamps: learningMode === 'hiragana'
+      ? checkpointMilestones.filter((milestone) => unlockedIds.has(milestone.id)).length
+      : routeRecords.reduce((total, route) => total + route.checkpoints.filter((checkpoint) => checkpoint.earned).length, 0),
     routes: routeRecords,
     nextGoals,
   }

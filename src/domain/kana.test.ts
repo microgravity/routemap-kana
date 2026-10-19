@@ -1,4 +1,4 @@
-import { normalizeReading, speechForKana, splitKana } from './kana'
+import { normalizeReading, readingForMode, speechForKana, splitKana, toKatakana } from './kana'
 
 describe('かなの正規化と位置', () => {
   it('分解された濁点をNFCへ正規化する', () => {
@@ -13,6 +13,14 @@ describe('かなの正規化と位置', () => {
   it('小書き文字には聞き取りやすい案内を返す', () => {
     expect(speechForKana('ょ')).toBe('ちいさい よ')
     expect(speechForKana('ゆ')).toBe('ゆ')
+    expect(speechForKana('ョ')).toBe('ちいさい ヨ')
+  })
+
+  it('駅の読みを濁音・小書き・長音を保ってカタカナへ変換する', () => {
+    expect(toKatakana('みなみまちだぐらんべりーぱーく')).toBe('ミナミマチダグランベリーパーク')
+    expect(toKatakana('ゔぁいおりん')).toBe('ヴァイオリン')
+    expect(readingForMode('きゃっかん', 'hiragana')).toBe('きゃっかん')
+    expect(readingForMode('きゃっかん', 'katakana')).toBe('キャッカン')
   })
 
   it('画順データがない可能性のあるひらがなも読みとして保持できる', async () => {

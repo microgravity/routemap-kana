@@ -5,7 +5,7 @@ import { MaterialIcon } from '../components/MaterialIcon'
 import { hasGlyph } from '../data/kana'
 import { railwayOperators, routes } from '../data/stations'
 import type { Point } from '../domain/input'
-import { splitKana, speechForKana } from '../domain/kana'
+import { readingForMode, splitKana, speechForKana } from '../domain/kana'
 import { nextFreeWritingPosition, nextUnpracticedPosition, reconcileProgress, type RouteAchievement } from '../domain/progress'
 import { nextStationIdOnRoute } from '../domain/routeNavigation'
 import { isRouteUnlocked, routeCheckpointMilestoneById } from '../domain/unlocks'
@@ -22,10 +22,13 @@ export function PracticePage() {
   const { stationId = '', position = '0' } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { stationById, state, routeStationIds, setCurrentPosition, markPositionComplete } = useAppState()
+  const { stationById, state, routeStationIds, setCurrentPosition, markPositionComplete, learningMode, progress: modeProgress, setLearningMode } = useAppState()
   const { speak } = useSpeech()
   const station = stationById.get(stationId)
-  const characters = useMemo(() => splitKana(station?.reading ?? ''), [station?.reading])
+  const requestedLearningMode = params.get('learning') === 'katakana' ? 'katakana' : params.get('learning') === 'hiragana' ? 'hiragana' : learningMode
+  useEffect(() => { setLearningMode(requestedLearningMode) }, [requestedLearningMode, setLearningMode])
+  const targetReading = readingForMode(station?.reading ?? '', learningMode)
+  const characters = useMemo(() => splitKana(targetReading), [targetReading])
   const parsed = Number(position)
   const index = Number.isInteger(parsed) && parsed >= 0 && parsed < characters.length ? parsed : 0
   const requestedRouteId = params.get('route') ?? 'toyoko'
@@ -60,14 +63,15 @@ export function PracticePage() {
     return <main className="simple-message"><h1>えきが みつかりません</h1><Link to="/">ろせんずへ</Link></main>
   }
 
-  const progress = reconcileProgress(state.progress[station.id], station.reading)
+  const progress = reconcileProgress(modeProgress[station.id], targetReading)
   const nextRouteStationId = routeId === 'found' ? undefined : nextStationIdOnRoute(routeStationIds(routeId), station.id)
   const nextRouteStation = nextRouteStationId ? stationById.get(nextRouteStationId) : undefined
-  const nextRouteStationProgress = nextRouteStation ? reconcileProgress(state.progress[nextRouteStation.id], nextRouteStation.reading) : undefined
+  const nextRouteReading = nextRouteStation ? readingForMode(nextRouteStation.reading, learningMode) : ''
+  const nextRouteStationProgress = nextRouteStation ? reconcileProgress(modeProgress[nextRouteStation.id], nextRouteReading) : undefined
   const nextRoutePosition = nextRouteStation && nextRouteStationProgress
     ? activeMode === 'free'
-      ? nextFreeWritingPosition(nextRouteStationProgress, nextRouteStation.reading, -1)
-      : nextUnpracticedPosition(nextRouteStationProgress, nextRouteStation.reading, -1)
+      ? nextFreeWritingPosition(nextRouteStationProgress, nextRouteReading, -1)
+      : nextUnpracticedPosition(nextRouteStationProgress, nextRouteReading, -1)
     : 0
 
   const goTo = (nextIndex: number) => {
@@ -78,7 +82,7 @@ export function PracticePage() {
     setAllowTraceOverride(false)
     setTraceGuide(null)
     setResetKey((value) => value + 1)
-    navigate(`/practice/${station.id}/${nextIndex}?route=${routeId}`, { replace: true })
+    navigate(`/practice/${station.id}/${nextIndex}?route=${routeId}&learning=${learningMode}`, { replace: true })
   }
 
   const chooseMode = (nextMode: 'trace' | 'free') => {
@@ -101,7 +105,7 @@ export function PracticePage() {
     setAllowTraceOverride(false)
     setTraceGuide(null)
     setResetKey((value) => value + 1)
-    navigate(`/practice/${nextRouteStation.id}/${nextRoutePosition}?route=${routeId}`)
+    navigate(`/practice/${nextRouteStation.id}/${nextRoutePosition}?route=${routeId}&learning=${learningMode}`)
   }
 
   const done = (force = false) => {
@@ -147,8 +151,8 @@ export function PracticePage() {
   }
 
   const next = () => goTo(activeMode === 'free'
-    ? nextFreeWritingPosition(progress, station.reading, index)
-    : nextUnpracticedPosition(progress, station.reading, index))
+    ? nextFreeWritingPosition(progress, targetReading, index)
+    : nextUnpracticedPosition(progress, targetReading, index))
   const primaryRouteAchievement = reward?.routeAchievements.find((achievement) => achievement.routeId === routeId)
     ?? reward?.routeAchievements[0]
   const mapRouteId = primaryRouteAchievement?.routeId ?? (routeId === 'found' ? 'toyoko' : routeId)
@@ -158,7 +162,7 @@ export function PracticePage() {
       <AppHeader compact />
       <main className="practice-main">
         <div className="practice-topbar">
-          <Link className="back-link" to={`/station/${station.id}?route=${routeId}`}><MaterialIcon name="arrow_back" />{station.reading}</Link>
+          <Link className="back-link" to={`/station/${station.id}?route=${routeId}&learning=${learningMode}`}><MaterialIcon name="arrow_back" />{targetReading}</Link>
           <div className="practice-mode-area">
             {activeMode === 'trace'
               ? <span className="trace-level">はんてい：{strictnessNames[state.settings.traceStrictness]}</span>
@@ -174,7 +178,7 @@ export function PracticePage() {
           <div className="practice-copy">
             <p className="eyebrow">{station.displayName}</p>
             <KanaStrip
-              reading={station.reading}
+              reading={targetReading}
               activeIndex={index}
               practicedPositions={progress.practicedPositions}
               freeWrittenPositions={progress.freeWrittenPositions}
@@ -231,7 +235,7 @@ export function PracticePage() {
               <button
                 type="button"
                 className="primary-button icon-button"
-                onClick={() => navigate(`/?route=${mapRouteId}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements, unlockedMilestones: reward.unlockedMilestones } })}
+                onClick={() => navigate(`/?route=${mapRouteId}&learning=${learningMode}`, { state: { celebrateStationId: station.id, firstAdd: reward.firstAdd, allFreeWritten: reward.allFreeWritten, routeAchievements: reward.routeAchievements, unlockedMilestones: reward.unlockedMilestones } })}
               >
                 <MaterialIcon name={reward.routeAchievements.length > 0 ? 'celebration' : 'route'} filled={reward.routeAchievements.length > 0} />
                 {reward.routeAchievements.length > 0 ? 'ろせん クリア！' : 'ろせんずを みる'}

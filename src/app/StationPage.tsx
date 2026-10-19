@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { railwayOperators, routes, stationCodeForRoute } from '../data/stations'
-import { splitKana } from '../domain/kana'
+import { readingForMode, splitKana } from '../domain/kana'
 import { reconcileProgress } from '../domain/progress'
 import { isRouteUnlocked } from '../domain/unlocks'
 import { KanaStrip } from '../features/practice/KanaStrip'
@@ -14,14 +14,17 @@ export function StationPage() {
   const { stationId = '' } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { stationById, state, routeStationIds, setCurrentPosition } = useAppState()
+  const { stationById, state, routeStationIds, setCurrentPosition, learningMode, progress: modeProgress, setLearningMode } = useAppState()
   const { speak, available } = useSpeech()
   const station = stationById.get(stationId)
   const requestedRouteId = params.get('route') ?? 'toyoko'
-  const storedPosition = station ? reconcileProgress(state.progress[station.id], station.reading).currentPosition : 0
+  const requestedLearningMode = params.get('learning') === 'katakana' ? 'katakana' : params.get('learning') === 'hiragana' ? 'hiragana' : learningMode
+  useEffect(() => { setLearningMode(requestedLearningMode) }, [requestedLearningMode, setLearningMode])
+  const targetReading = station ? readingForMode(station.reading, learningMode) : ''
+  const storedPosition = station ? reconcileProgress(modeProgress[station.id], targetReading).currentPosition : 0
   const focusParam = params.get('focus')
   const focusValue = focusParam === null ? Number.NaN : Number(focusParam)
-  const focusedPosition = station && Number.isInteger(focusValue) && focusValue >= 0 && focusValue < splitKana(station.reading).length ? focusValue : null
+  const focusedPosition = station && Number.isInteger(focusValue) && focusValue >= 0 && focusValue < splitKana(targetReading).length ? focusValue : null
   const [selectedPosition, setSelectedPosition] = useState(focusedPosition ?? storedPosition)
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function StationPage() {
   }, [focusedPosition, stationId, storedPosition])
 
   if (!station) return <NotFound />
-  const progress = reconcileProgress(state.progress[station.id], station.reading)
+  const progress = reconcileProgress(modeProgress[station.id], targetReading)
   const unlockedRoutes = routes.filter((route) => isRouteUnlocked(route, railwayOperators, state.unlockedMilestones))
   const stationRoutes = unlockedRoutes.filter((route) => routeStationIds(route.id).includes(station.id))
   if (station.builtIn && stationRoutes.length === 0) return <LockedStation />
@@ -46,11 +49,12 @@ export function StationPage() {
   const stationCode = activeRoute ? stationCodeForRoute(activeRoute, station.id) : undefined
   const stationNameLength = Array.from(station.displayName).length
   const backToKana = params.get('from') === 'kana' && params.get('kana')
-  const backUrl = backToKana ? `/kana/${encodeURIComponent(params.get('kana')!)}` : `/?route=${routeId === 'found' ? 'toyoko' : routeId}`
+  const modeQuery = `learning=${learningMode}`
+  const backUrl = backToKana ? `/kana/${encodeURIComponent(params.get('kana')!)}?${modeQuery}` : `/?route=${routeId === 'found' ? 'toyoko' : routeId}&${modeQuery}`
 
   const startAt = (index: number) => {
     setCurrentPosition(station.id, index)
-    navigate(`/practice/${station.id}/${index}?route=${routeId}`)
+    navigate(`/practice/${station.id}/${index}?route=${routeId}&${modeQuery}`)
   }
 
   return (
@@ -68,15 +72,15 @@ export function StationPage() {
             <div className="station-board-name">
               <p className="eyebrow">この えきは</p>
               <h1>{station.displayName}</h1>
-              <p className="station-big-reading">{station.reading}</p>
+              <p className="station-big-reading">{targetReading}</p>
             </div>
             <div className="station-board-neighbors">
-              <BoardNeighbor station={previousStation} direction="まえの えき" routeId={routeId} />
+              <BoardNeighbor station={previousStation} direction="まえの えき" routeId={routeId} learningMode={learningMode} />
               <div className="station-board-route">
                 <small>{activeRoute?.name ?? 'みつけた えき'}</small>
                 {stationCode && <strong>{stationCode}</strong>}
               </div>
-              <BoardNeighbor station={nextStation} direction="つぎの えき" routeId={routeId} next />
+              <BoardNeighbor station={nextStation} direction="つぎの えき" routeId={routeId} learningMode={learningMode} next />
             </div>
           </section>
           <div className="route-badges route-badges--center" aria-label="この えきの ろせん">
@@ -87,7 +91,7 @@ export function StationPage() {
             ))}
           </div>
           <KanaStrip
-            reading={station.reading}
+            reading={targetReading}
             activeIndex={selectedPosition}
             practicedPositions={progress.practicedPositions}
             freeWrittenPositions={progress.freeWrittenPositions}
@@ -102,7 +106,7 @@ export function StationPage() {
             </button>
             <button type="button" className="big-action big-action--write" onClick={() => startAt(selectedPosition)}>
               <MaterialIcon name="draw" filled /><strong>かく</strong>
-              <small>{progress.practicedPositions.length}/{splitKana(station.reading).length} もじ</small>
+              <small>{progress.practicedPositions.length}/{splitKana(targetReading).length} もじ</small>
             </button>
           </div>
         </article>
@@ -111,15 +115,15 @@ export function StationPage() {
   )
 }
 
-function BoardNeighbor({ station, direction, routeId, next = false }: { station?: { id: string; displayName: string; reading: string }; direction: string; routeId: string; next?: boolean }) {
+function BoardNeighbor({ station, direction, routeId, learningMode, next = false }: { station?: { id: string; displayName: string; reading: string }; direction: string; routeId: string; learningMode: 'hiragana' | 'katakana'; next?: boolean }) {
   const className = `station-board-neighbor ${next ? 'station-board-neighbor--next' : ''}`
   const content = (
     <>
-      {station && <><small>{next ? `${direction} →` : `← ${direction}`}</small><strong>{station.displayName}</strong><span>{station.reading}</span></>}
+      {station && <><small>{next ? `${direction} →` : `← ${direction}`}</small><strong>{station.displayName}</strong><span>{readingForMode(station.reading, learningMode)}</span></>}
     </>
   )
   return station
-    ? <Link className={className} to={`/station/${station.id}?route=${routeId}`} aria-label={`${direction}、${station.displayName}、${station.reading}`}>{content}</Link>
+    ? <Link className={className} to={`/station/${station.id}?route=${routeId}&learning=${learningMode}`} aria-label={`${direction}、${station.displayName}、${readingForMode(station.reading, learningMode)}`}>{content}</Link>
     : <div className={className} aria-hidden="true" />
 }
 

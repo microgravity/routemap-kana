@@ -9,6 +9,16 @@ const SMALL_KANA: Record<string, string> = {
   'ゅ': 'ちいさい ゆ',
   'ょ': 'ちいさい よ',
   'ゎ': 'ちいさい わ',
+  'ァ': 'ちいさい ア',
+  'ィ': 'ちいさい イ',
+  'ゥ': 'ちいさい ウ',
+  'ェ': 'ちいさい エ',
+  'ォ': 'ちいさい オ',
+  'ッ': 'ちいさい ツ',
+  'ャ': 'ちいさい ヤ',
+  'ュ': 'ちいさい ユ',
+  'ョ': 'ちいさい ヨ',
+  'ヮ': 'ちいさい ワ',
 }
 
 export function normalizeReading(value: string): string {
@@ -26,6 +36,22 @@ export function speechForKana(kana: string): string {
 export function isHiraganaReading(value: string): boolean {
   const normalized = normalizeReading(value)
   return normalized.length > 0 && /^[\u3041-\u309fー]+$/u.test(normalized)
+}
+
+export function toKatakana(value: string): string {
+  return Array.from(normalizeReading(value), (character) => {
+    const code = character.codePointAt(0) ?? 0
+    return code >= 0x3041 && code <= 0x3096 ? String.fromCodePoint(code + 0x60) : character
+  }).join('').normalize('NFC')
+}
+
+export function readingForMode(reading: string, mode: 'hiragana' | 'katakana'): string {
+  return mode === 'katakana' ? toKatakana(reading) : normalizeReading(reading)
+}
+
+export function isKatakanaReading(value: string): boolean {
+  const normalized = normalizeReading(value)
+  return normalized.length > 0 && /^[\u30a1-\u30ffー]+$/u.test(normalized)
 }
 
 export function readingVersion(reading: string): string {

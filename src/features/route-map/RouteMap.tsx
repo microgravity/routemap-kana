@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { stationCodeForRoute } from '../../data/stations'
 import type { Route } from '../../domain/types'
 import { isStationFreeWritten, isStationPracticed, type RouteAchievementLevel } from '../../domain/progress'
+import { readingForMode } from '../../domain/kana'
 import { useAppState } from '../../app/AppState'
 import { buildRouteMapLayout } from './routeMapLayout'
 import { MaterialIcon } from '../../components/MaterialIcon'
@@ -19,14 +20,14 @@ interface Props {
 }
 
 export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, celebrateRouteLevel, routeCelebrationKey = 0, scrollResetKey, onSelect }: Props) {
-  const { stationById, state } = useAppState()
+  const { stationById, state, progress, learningMode } = useAppState()
   const scrollRef = useRef<HTMLDivElement>(null)
   const { width, points } = buildRouteMapLayout(stationIds, stationById)
   const y = 142
   const celebratedIndex = points.findIndex((point) => point.id === celebrateStationId)
   const celebratedPoint = points[celebratedIndex]
-  const previousAdded = celebratedIndex > 0 && state.progress[points[celebratedIndex - 1]?.id]?.added
-  const nextAdded = celebratedIndex >= 0 && celebratedIndex < points.length - 1 && state.progress[points[celebratedIndex + 1]?.id]?.added
+  const previousAdded = celebratedIndex > 0 && progress[points[celebratedIndex - 1]?.id]?.added
+  const nextAdded = celebratedIndex >= 0 && celebratedIndex < points.length - 1 && progress[points[celebratedIndex + 1]?.id]?.added
   const trainStart = previousAdded
     ? points[celebratedIndex - 1].x
     : nextAdded
@@ -49,7 +50,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, ce
           <line x1={points[0]?.x ?? 0} x2={points.at(-1)?.x ?? 0} y1={y} y2={y} className="route-line-shadow" />
           {points.slice(0, -1).map((point, index) => {
             const next = points[index + 1]
-            const connected = Boolean(state.progress[point.id]?.added && state.progress[next.id]?.added)
+            const connected = Boolean(progress[point.id]?.added && progress[next.id]?.added)
             return (
               <line
                 key={`${point.id}-${next.id}`}
@@ -67,10 +68,11 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, ce
             const station = stationById.get(id)
             if (!station) return null
             const stationCode = stationCodeForRoute(route, id)
-            const progress = state.progress[id]
-            const added = Boolean(progress?.added)
-            const practiced = isStationPracticed(progress, station.reading)
-            const freeWritten = isStationFreeWritten(progress, station.reading)
+            const stationProgress = progress[id]
+            const targetReading = readingForMode(station.reading, learningMode)
+            const added = Boolean(stationProgress?.added)
+            const practiced = isStationPracticed(stationProgress, targetReading)
+            const freeWritten = isStationFreeWritten(stationProgress, targetReading)
             const hidden = mode === 'mine' && !added
             return (
               <g
@@ -79,7 +81,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, ce
                 style={celebrateRouteLevel ? { '--celebration-index': points.findIndex((point) => point.id === id) } as React.CSSProperties : undefined}
                 role={hidden ? undefined : 'button'}
                 tabIndex={hidden ? -1 : 0}
-                aria-label={`${station.displayName}、${station.reading}${freeWritten ? '、おてほんなしで ぜんぶかいた' : practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
+                aria-label={`${station.displayName}、${targetReading}${freeWritten ? '、おてほんなしで ぜんぶかいた' : practiced ? '、ぜんぶかいた' : added ? '、いちぶかいた' : ''}`}
                 onClick={() => { if (!hidden) onSelect(id) }}
                 onKeyDown={(event) => {
                   if (!hidden && (event.key === 'Enter' || event.key === ' ')) {
@@ -95,7 +97,7 @@ export function RouteMap({ route, stationIds, mode, zoom, celebrateStationId, ce
                 {!hidden && (
                   <>
                     <text x={x} y={y + 67} className="station-label">{station.displayName}</text>
-                    <text x={x} y={y + 94} className="station-reading">{station.reading}</text>
+                    <text x={x} y={y + 94} className="station-reading">{targetReading}</text>
                     {stationCode && <text x={x} y={y + 119} className="station-code">{stationCode}</text>}
                   </>
                 )}
